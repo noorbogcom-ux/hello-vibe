@@ -13,24 +13,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" | base64 -d > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          
       - name: Deploy to EC2
         env:
-          PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
           HOSTNAME: ${{ secrets.EC2_HOST }}
           USER_NAME: ubuntu
         run: |
-          echo "$PRIVATE_KEY" > private_key.pem
-          chmod 600 private_key.pem
-          
           # EC2にファイルをコピー
-          scp -o StrictHostKeyChecking=no -i private_key.pem index.html ${USER_NAME}@${HOSTNAME}:/tmp/
+          scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa index.html ${USER_NAME}@${HOSTNAME}:/tmp/
           
           # Nginxのドキュメントルートに移動
-          ssh -o StrictHostKeyChecking=no -i private_key.pem ${USER_NAME}@${HOSTNAME} '
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa ${USER_NAME}@${HOSTNAME} '
             sudo cp /tmp/index.html /var/www/html/
             sudo systemctl reload nginx
             echo "✅ デプロイ完了！"
           '
-          
-          rm -f private_key.pem
 
