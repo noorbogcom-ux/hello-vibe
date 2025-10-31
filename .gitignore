@@ -2,6 +2,14 @@
 .DS_Store
 Thumbs.db
 
+# SSH Keys (絶対にGitHubにプッシュしない！)
+*.pem
+*.key
+
+# AWS認証情報 (絶対にGitHubにプッシュしない！)
+*credentials.csv
+AWSCLI.txt
+
 # IDE
 .vscode/
 .idea/
