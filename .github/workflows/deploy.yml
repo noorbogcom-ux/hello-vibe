@@ -29,6 +29,7 @@ jobs:
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
         run: |
           # プロジェクトファイルをEC2にコピー
           scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa -r public server.js package.json models ${USER_NAME}@${HOSTNAME}:/home/ubuntu/hello-vibe/
@@ -46,6 +47,7 @@ jobs:
             echo 'SESSION_SECRET=${SESSION_SECRET}' >> .env && \
             echo 'OPENAI_API_KEY=${OPENAI_API_KEY}' >> .env && \
             echo 'MONGODB_URI=${MONGODB_URI}' >> .env && \
+            echo 'SERPER_API_KEY=${SERPER_API_KEY}' >> .env && \
             echo 'PORT=3000' >> .env && \
             npm install --production && \
             pm2 delete hello-vibe || true && \

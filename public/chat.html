@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AIチャット - ハロー！バイブ！</title>
+    <title>AI Chat - BOGs</title>
     <style>
         * {
             margin: 0;
@@ -11,206 +11,410 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --primary-color: #1e3a8a;
+            --secondary-color: #3b82f6;
+            --accent-color: #60a5fa;
+            --ai-color: #8b5cf6;
+            --web-color: #10b981;
+            --bg-gradient: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            --text-dark: #1f2937;
+            --text-light: #6b7280;
+            --border-color: #e5e7eb;
+            --bg-light: #f9fafb;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--bg-gradient);
             min-height: 100vh;
-            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
         }
 
         .container {
-            max-width: 1200px;
-            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            max-width: 1000px;
+            width: 100%;
+            animation: fadeIn 0.5s ease-in;
         }
 
+        /* ヘッダー */
         .header {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            background: var(--bg-gradient);
+            color: white;
+            padding: 20px 30px;
+        }
+
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
         .header h1 {
-            color: #667eea;
-            font-size: 2rem;
-            margin-bottom: 10px;
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .nav-btn, .logout-btn {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+
+        .nav-btn:hover, .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .nav-btn.active {
+            background: white;
+            color: var(--primary-color);
         }
 
         .user-info {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 12px;
         }
 
         .user-avatar {
-            width: 40px;
-            height: 40px;
+            width: 45px;
+            height: 45px;
             border-radius: 50%;
+            border: 3px solid white;
         }
 
-        .logout-btn {
-            margin-left: auto;
-            padding: 8px 20px;
-            background: #667eea;
+        /* モード切替 */
+        .mode-toggle {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
             color: white;
-            border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
-            text-decoration: none;
+            transition: all 0.3s;
+            font-weight: 600;
+            font-size: 0.95rem;
         }
 
-        .main-content {
-            display: grid;
-            grid-template-columns: 300px 1fr;
-            gap: 20px;
+        .mode-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
 
-        .sidebar {
-            background: rgba(255, 255, 255, 0.95);
+        .mode-btn.active {
+            background: white;
+            color: var(--primary-color);
+        }
+
+        /* ファイルアップロード */
+        .upload-section {
             padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            height: fit-content;
+            background: var(--bg-light);
+            border-bottom: 1px solid var(--border-color);
         }
 
-        .sidebar h2 {
-            color: #667eea;
-            font-size: 1.2rem;
-            margin-bottom: 15px;
+        .upload-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 10px;
         }
 
         .upload-area {
-            border: 2px dashed #667eea;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        #fileInput {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-input-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: white;
+            border: 2px dashed var(--border-color);
             border-radius: 10px;
-            padding: 20px;
-            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .file-input-label:hover {
+            border-color: var(--secondary-color);
+            background: #eff6ff;
+        }
+
+        .upload-btn {
+            padding: 12px 28px;
+            background: var(--bg-gradient);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
         }
 
-        .upload-area:hover {
-            background: #f0f0f0;
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
         }
 
-        .upload-area input[type="file"] {
-            display: none;
+        .upload-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
         }
 
-        .document-list {
-            margin-top: 20px;
+        .file-name {
+            margin-top: 8px;
+            font-size: 0.85rem;
+            color: var(--text-light);
         }
 
-        .document-item {
+        .upload-status {
+            margin-top: 10px;
             padding: 10px;
-            background: #f8f9fa;
             border-radius: 8px;
-            margin-bottom: 10px;
             font-size: 0.9rem;
         }
 
-        .chat-area {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            display: flex;
-            flex-direction: column;
-            height: 600px;
+        .upload-status.success {
+            background: #d1fae5;
+            color: #065f46;
         }
 
-        .chat-messages {
-            flex: 1;
+        .upload-status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* チャットエリア */
+        .chat-container {
+            height: 450px;
             overflow-y: auto;
             padding: 20px;
+            background: var(--bg-light);
         }
 
         .message {
-            margin-bottom: 20px;
+            margin-bottom: 25px;
             animation: slideIn 0.3s ease-out;
         }
 
         .message.user {
-            text-align: right;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
         }
 
         .message.ai {
-            text-align: left;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
         }
 
         .message-bubble {
-            display: inline-block;
-            max-width: 70%;
-            padding: 12px 18px;
-            border-radius: 18px;
+            max-width: 75%;
+            padding: 12px 16px;
+            border-radius: 16px;
             word-wrap: break-word;
-            white-space: pre-wrap;
+            line-height: 1.6;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .message.user .message-bubble {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--bg-gradient);
             color: white;
         }
 
         .message.ai .message-bubble {
-            background: #f0f0f0;
-            color: #333;
+            background: white;
+            color: var(--text-dark);
         }
 
-        .chat-input-area {
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            font-size: 0.85rem;
+            color: var(--text-light);
+        }
+
+        .ai-badge {
+            padding: 2px 8px;
+            background: var(--ai-color);
+            color: white;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .web-badge {
+            padding: 2px 8px;
+            background: var(--web-color);
+            color: white;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        /* ローディングアニメーション */
+        .loading-message {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            max-width: 75%;
+        }
+
+        .loading-dots {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .loading-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--secondary-color);
+            animation: wave 1.4s infinite ease-in-out;
+        }
+
+        .loading-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .loading-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes wave {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+
+        /* 入力エリア */
+        .input-container {
             padding: 20px;
-            border-top: 1px solid #e0e0e0;
+            background: white;
+            border-top: 1px solid var(--border-color);
         }
 
         .input-row {
             display: flex;
             gap: 10px;
+            align-items: flex-end;
         }
 
-        input[type="text"] {
+        textarea {
             flex: 1;
-            padding: 12px 18px;
-            border: 2px solid #e0e0e0;
-            border-radius: 25px;
+            padding: 12px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
             font-size: 1rem;
+            font-family: inherit;
+            resize: none;
             transition: border-color 0.3s;
+            min-height: 50px;
+            max-height: 150px;
         }
 
-        input[type="text"]:focus {
+        textarea:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--secondary-color);
         }
 
-        button {
-            padding: 12px 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .send-btn {
+            padding: 12px 28px;
+            background: var(--bg-gradient);
             color: white;
             border: none;
-            border-radius: 25px;
+            border-radius: 12px;
             font-size: 1rem;
-            font-weight: bold;
+            font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s;
+            transition: all 0.3s;
+            min-height: 50px;
         }
 
-        button:hover {
+        .send-btn:hover {
             transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
         }
 
-        button:disabled {
+        .send-btn:active {
+            transform: translateY(0);
+        }
+
+        .send-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+            transform: none;
         }
 
-        .loading {
-            text-align: center;
-            color: #888;
-            padding: 10px;
+        .hidden {
+            display: none !important;
         }
 
-        @keyframes slideIn {
+        /* アニメーション */
+        @keyframes fadeIn {
             from {
                 opacity: 0;
-                transform: translateY(10px);
+                transform: translateY(-20px);
             }
             to {
                 opacity: 1;
@@ -218,9 +422,75 @@
             }
         }
 
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* モバイル対応 */
         @media (max-width: 768px) {
-            .main-content {
-                grid-template-columns: 1fr;
+            .header {
+                padding: 15px 20px;
+            }
+
+            .header h1 {
+                font-size: 1.4rem;
+            }
+
+            .header-top {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .nav-buttons {
+                width: 100%;
+            }
+
+            .nav-btn, .logout-btn {
+                flex: 1;
+                text-align: center;
+                font-size: 0.85rem;
+                padding: 8px 12px;
+            }
+
+            .mode-toggle {
+                flex-direction: column;
+            }
+
+            .upload-section {
+                padding: 15px;
+            }
+
+            .upload-area {
+                flex-direction: column;
+            }
+
+            .file-input-wrapper {
+                min-width: 100%;
+            }
+
+            .chat-container {
+                height: calc(100vh - 500px);
+                min-height: 250px;
+            }
+
+            .message-bubble {
+                max-width: 85%;
+            }
+
+            .user-avatar {
+                width: 35px;
+                height: 35px;
+            }
+
+            textarea {
+                font-size: 16px; /* iOS zoom防止 */
             }
         }
     </style>
@@ -228,47 +498,79 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🤖 AIアシスタント</h1>
+            <div class="header-top">
+                <h1>🤖 BOGs AI</h1>
+                <div class="nav-buttons">
+                    <a href="/" class="nav-btn">チャット</a>
+                    <a href="/chat.html" class="nav-btn active">🤖 AI</a>
+                    <a href="/auth/logout" class="logout-btn">ログアウト</a>
+                </div>
+            </div>
             <div class="user-info">
                 <img id="userAvatar" class="user-avatar" src="" alt="アバター">
                 <span id="userName"></span>
-                <a href="/" class="logout-btn">チャットに戻る</a>
-                <a href="/auth/logout" class="logout-btn">ログアウト</a>
+            </div>
+            <div class="mode-toggle">
+                <button class="mode-btn active" data-mode="rag" onclick="switchMode('rag')">
+                    📚 RAGモード - ドキュメント検索
+                </button>
+                <button class="mode-btn" data-mode="web" onclick="switchMode('web')">
+                    🌐 Webモード - リアルタイム検索
+                </button>
             </div>
         </div>
 
-        <div class="main-content">
-            <div class="sidebar">
-                <h2>📁 ドキュメント</h2>
-                <div class="upload-area" onclick="document.getElementById('fileInput').click()">
-                    <input type="file" id="fileInput" accept=".pdf,.docx,.txt">
-                    <p>📤 クリックしてファイルをアップロード</p>
-                    <small>PDF, Word, テキスト (最大10MB)</small>
+        <!-- ファイルアップロード（RAGモードのみ） -->
+        <div id="uploadSection" class="upload-section">
+            <div class="upload-title">📎 ドキュメントをアップロード</div>
+            <div class="upload-area">
+                <div class="file-input-wrapper">
+                    <input type="file" id="fileInput" accept=".txt,.pdf,.docx">
+                    <label for="fileInput" class="file-input-label">
+                        <span>📄</span>
+                        <span>ファイルを選択</span>
+                    </label>
+                    <div id="fileName" class="file-name"></div>
                 </div>
-                <div class="document-list" id="documentList"></div>
+                <button class="upload-btn" onclick="uploadFile()" id="uploadBtn" disabled>
+                    アップロード
+                </button>
             </div>
+            <div id="uploadStatus"></div>
+        </div>
 
-            <div class="chat-area">
-                <div class="chat-messages" id="messages">
-                    <div class="message ai">
-                        <div class="message-bubble">
-                            こんにちは！私はあなたの AI アシスタントです。<br>
-                            ドキュメントをアップロードすると、その内容について質問できますよ！🤖✨
-                        </div>
-                    </div>
+        <!-- チャットエリア -->
+        <div class="chat-container" id="chatMessages">
+            <div class="message ai">
+                <div class="message-header">
+                    <span class="ai-badge">AI</span>
+                    <span>BOGs</span>
                 </div>
-                <div class="chat-input-area">
-                    <div class="input-row">
-                        <input type="text" id="messageInput" placeholder="メッセージを入力..." maxlength="1000">
-                        <button onclick="sendMessage()" id="sendBtn">送信</button>
-                    </div>
+                <div class="message-bubble">
+                    こんにちは！BOGsです🤖<br><br>
+                    <strong>RAGモード：</strong>アップロードしたドキュメントを元に回答します<br>
+                    <strong>Webモード：</strong>最新のWeb情報を検索して回答します
                 </div>
+            </div>
+        </div>
+
+        <!-- 入力エリア -->
+        <div class="input-container">
+            <div class="input-row">
+                <textarea 
+                    id="messageInput" 
+                    placeholder="メッセージを入力... (Shift+Enterで送信)" 
+                    rows="1"
+                ></textarea>
+                <button class="send-btn" onclick="sendMessage()" id="sendBtn">送信</button>
             </div>
         </div>
     </div>
 
     <script>
         let currentUser = null;
+        let currentMode = 'rag'; // 'rag' or 'web'
+        let isLoading = false;
 
         // 認証状態をチェック
         async function checkAuth() {
@@ -278,7 +580,6 @@
                     currentUser = await response.json();
                     document.getElementById('userName').textContent = currentUser.displayName;
                     document.getElementById('userAvatar').src = currentUser.pictureUrl;
-                    loadDocuments();
                 } else {
                     window.location.href = '/';
                 }
@@ -288,41 +589,72 @@
             }
         }
 
-        // ドキュメント一覧を取得
-        async function loadDocuments() {
-            try {
-                const response = await fetch('/api/documents');
-                if (response.ok) {
-                    const documents = await response.json();
-                    const listDiv = document.getElementById('documentList');
-                    
-                    if (documents.length === 0) {
-                        listDiv.innerHTML = '<p style="color: #888; font-size: 0.9rem; margin-top: 10px;">まだドキュメントがありません</p>';
-                    } else {
-                        listDiv.innerHTML = documents.map(doc => `
-                            <div class="document-item">
-                                📄 ${doc.originalName}<br>
-                                <small>${(doc.fileSize / 1024).toFixed(1)} KB</small>
-                            </div>
-                        `).join('');
-                    }
-                }
-            } catch (error) {
-                console.error('ドキュメント取得エラー:', error);
+        // モード切替
+        function switchMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+            
+            // RAGモードの時のみアップロードセクションを表示
+            const uploadSection = document.getElementById('uploadSection');
+            if (mode === 'rag') {
+                uploadSection.style.display = 'block';
+            } else {
+                uploadSection.style.display = 'none';
             }
         }
 
+        // ファイル選択時
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuth();
+            
+            const fileInput = document.getElementById('fileInput');
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    document.getElementById('fileName').textContent = `選択: ${file.name}`;
+                    document.getElementById('uploadBtn').disabled = false;
+                } else {
+                    document.getElementById('fileName').textContent = '';
+                    document.getElementById('uploadBtn').disabled = true;
+                }
+            });
+
+            // テキストエリアのイベント
+            const messageInput = document.getElementById('messageInput');
+            messageInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            messageInput.addEventListener('input', function() {
+                autoResize(this);
+            });
+        });
+
         // ファイルアップロード
-        document.getElementById('fileInput').addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            const statusDiv = document.getElementById('uploadStatus');
+            
+            if (!file) {
+                statusDiv.className = 'upload-status error';
+                statusDiv.textContent = '❌ ファイルが選択されていません';
+                return;
+            }
 
             const formData = new FormData();
             formData.append('file', file);
 
+            statusDiv.className = 'upload-status';
+            statusDiv.textContent = `📤 "${file.name}" をアップロード中...`;
+            document.getElementById('uploadBtn').disabled = true;
+
             try {
-                addMessage('ai', `📤 "${file.name}" をアップロード中...`);
-                
                 const response = await fetch('/api/upload', {
                     method: 'POST',
                     body: formData
@@ -330,33 +662,42 @@
 
                 const result = await response.json();
 
-                if (result.success) {
-                    addMessage('ai', `✅ "${result.filename}" のアップロードが完了しました！\n${result.textLength}文字のテキストを抽出しました。`);
-                    loadDocuments();
+                if (response.ok) {
+                    statusDiv.className = 'upload-status success';
+                    statusDiv.textContent = `✅ "${file.name}" のアップロードが完了しました！ ${result.textLength}文字のテキストを抽出しました。`;
+                    fileInput.value = '';
+                    document.getElementById('fileName').textContent = '';
                 } else {
-                    addMessage('ai', '❌ アップロードに失敗しました');
+                    statusDiv.className = 'upload-status error';
+                    statusDiv.textContent = `❌ エラー: ${result.error}`;
                 }
             } catch (error) {
                 console.error('アップロードエラー:', error);
-                addMessage('ai', '❌ アップロードに失敗しました');
+                statusDiv.className = 'upload-status error';
+                statusDiv.textContent = '❌ アップロードに失敗しました';
+            } finally {
+                document.getElementById('uploadBtn').disabled = false;
             }
+        }
 
-            e.target.value = '';
-        });
-
-        // メッセージを送信
+        // メッセージ送信
         async function sendMessage() {
-            const input = document.getElementById('messageInput');
-            const message = input.value.trim();
+            if (isLoading) return;
+
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
             
             if (!message) return;
 
-            addMessage('user', message);
-            input.value = '';
+            // ユーザーメッセージを表示
+            addUserMessage(message);
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
 
-            const sendBtn = document.getElementById('sendBtn');
-            sendBtn.disabled = true;
-            sendBtn.textContent = '送信中...';
+            // ローディング表示
+            const loadingId = addLoadingMessage();
+            isLoading = true;
+            document.getElementById('sendBtn').disabled = true;
 
             try {
                 const response = await fetch('/api/chat', {
@@ -364,50 +705,125 @@
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ message })
+                    body: JSON.stringify({
+                        message: message,
+                        mode: currentMode
+                    })
                 });
 
                 const result = await response.json();
 
-                if (result.success) {
-                    addMessage('ai', result.response);
+                // ローディング削除
+                removeLoadingMessage(loadingId);
+
+                if (response.ok) {
+                    addAIMessage(result.response, result.sources);
                 } else {
-                    addMessage('ai', '❌ エラーが発生しました');
+                    addAIMessage(`エラー: ${result.error}`, null);
                 }
             } catch (error) {
-                console.error('チャットエラー:', error);
-                addMessage('ai', '❌ エラーが発生しました');
+                console.error('送信エラー:', error);
+                removeLoadingMessage(loadingId);
+                addAIMessage('エラーが発生しました。もう一度お試しください。', null);
+            } finally {
+                isLoading = false;
+                document.getElementById('sendBtn').disabled = false;
             }
-
-            sendBtn.disabled = false;
-            sendBtn.textContent = '送信';
         }
 
-        // メッセージを画面に追加
-        function addMessage(type, text) {
-            const messagesDiv = document.getElementById('messages');
+        // ユーザーメッセージを追加
+        function addUserMessage(text) {
+            const chatMessages = document.getElementById('chatMessages');
             const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${type}`;
-            
-            const bubble = document.createElement('div');
-            bubble.className = 'message-bubble';
-            bubble.textContent = text;
-            
-            messageDiv.appendChild(bubble);
-            messagesDiv.appendChild(messageDiv);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            messageDiv.className = 'message user';
+            messageDiv.innerHTML = `
+                <div class="message-header">
+                    <span>${escapeHtml(currentUser.displayName)}</span>
+                </div>
+                <div class="message-bubble">${escapeHtml(text).replace(/\n/g, '<br>')}</div>
+            `;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
-        // Enterキーで送信
-        document.getElementById('messageInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage();
+        // AIメッセージを追加
+        function addAIMessage(text, sources) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ai';
+            
+            const badge = currentMode === 'web' 
+                ? '<span class="web-badge">WEB</span>' 
+                : '<span class="ai-badge">AI</span>';
+            
+            let sourcesHtml = '';
+            if (sources && sources.length > 0) {
+                sourcesHtml = '<br><br><small style="color: #6b7280;">📚 参照: ' + 
+                    sources.map(s => escapeHtml(s)).join(', ') + '</small>';
             }
-        });
+            
+            messageDiv.innerHTML = `
+                <div class="message-header">
+                    ${badge}
+                    <span>BOGs</span>
+                </div>
+                <div class="message-bubble">${escapeHtml(text).replace(/\n/g, '<br>')}${sourcesHtml}</div>
+            `;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
 
-        // 初期化
-        checkAuth();
+        // ローディングメッセージを追加
+        function addLoadingMessage() {
+            const chatMessages = document.getElementById('chatMessages');
+            const loadingDiv = document.createElement('div');
+            const loadingId = 'loading-' + Date.now();
+            loadingDiv.id = loadingId;
+            loadingDiv.className = 'message ai';
+            
+            const badge = currentMode === 'web' 
+                ? '<span class="web-badge">WEB</span>' 
+                : '<span class="ai-badge">AI</span>';
+            
+            loadingDiv.innerHTML = `
+                <div class="message-header">
+                    ${badge}
+                    <span>BOGs</span>
+                </div>
+                <div class="loading-message">
+                    <div class="loading-dots">
+                        <div class="loading-dot"></div>
+                        <div class="loading-dot"></div>
+                        <div class="loading-dot"></div>
+                    </div>
+                    <span style="color: #6b7280; font-size: 0.9rem;">考え中...</span>
+                </div>
+            `;
+            chatMessages.appendChild(loadingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return loadingId;
+        }
+
+        // ローディングメッセージを削除
+        function removeLoadingMessage(loadingId) {
+            const loadingDiv = document.getElementById(loadingId);
+            if (loadingDiv) {
+                loadingDiv.remove();
+            }
+        }
+
+        // HTMLエスケープ
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // テキストエリアの自動リサイズ
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 150) + 'px';
+        }
     </script>
 </body>
 </html>
-

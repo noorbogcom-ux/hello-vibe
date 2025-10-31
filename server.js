@@ -254,6 +254,37 @@ app.get('/api/documents', async (req, res) => {
   }
 });
 
+// SERPER APIでWeb検索
+async function searchWeb(query) {
+  try {
+    const response = await axios.post(
+      'https://google.serper.dev/search',
+      {
+        q: query,
+        num: 5 // 検索結果5件
+      },
+      {
+        headers: {
+          'X-API-KEY': process.env.SERPER_API_KEY,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    
+    const results = response.data.organic || [];
+    const searchContext = results
+      .map((r, i) => `[検索結果 ${i + 1}]\nタイトル: ${r.title}\n内容: ${r.snippet}\nURL: ${r.link}`)
+      .join('\n\n');
+    
+    const sources = results.map(r => r.title);
+    
+    return { searchContext, sources };
+  } catch (error) {
+    console.error('Web検索エラー:', error.response?.data || error.message);
+    throw new Error('Web検索に失敗しました');
+  }
+}
+
 // AIチャットAPI
 app.post('/api/chat', async (req, res) => {
   try {
@@ -261,18 +292,52 @@ app.post('/api/chat', async (req, res) => {
       return res.status(401).json({ error: 'ログインが必要です' });
     }
     
-    const { message } = req.body;
+    const { message, mode = 'rag' } = req.body;
     
-    // ユーザーのドキュメントを取得（RAG用）
-    const userDocuments = await Document.find({ 
-      userId: req.session.user.userId,
-      processed: true
-    });
+    let systemPrompt = '';
+    let additionalContext = '';
+    let sources = [];
     
-    // ドキュメント内容を結合
-    const knowledgeBase = userDocuments
-      .map(doc => `[ファイル: ${doc.originalName}]\n${doc.extractedText}`)
-      .join('\n\n---\n\n');
+    // モードに応じて処理を分岐
+    if (mode === 'web') {
+      // Webモード: SERPER APIで検索
+      console.log(`🌐 Web検索モード: ${message}`);
+      const { searchContext, sources: webSources } = await searchWeb(message);
+      additionalContext = searchContext;
+      sources = webSources;
+      
+      systemPrompt = `あなたは親切なAIアシスタントです。以下のWeb検索結果を参照して、ユーザーの質問に答えてください。
+
+【Web検索結果】
+${additionalContext}
+
+上記の最新情報を活用しながら、ユーザーの質問に丁寧に答えてください。情報源を引用する場合は、どの検索結果から得た情報かを明示してください。`;
+      
+    } else {
+      // RAGモード: ユーザーのドキュメントを検索
+      console.log(`📚 RAGモード: ${message}`);
+      const userDocuments = await Document.find({ 
+        userId: req.session.user.userId,
+        processed: true
+      });
+      
+      if (userDocuments.length > 0) {
+        additionalContext = userDocuments
+          .map(doc => `[ファイル: ${doc.originalName}]\n${doc.extractedText}`)
+          .join('\n\n---\n\n');
+        
+        sources = userDocuments.map(doc => doc.originalName);
+        
+        systemPrompt = `あなたは親切なAIアシスタントです。以下のユーザーがアップロードしたドキュメントの内容を参照して、質問に答えてください。
+
+【ユーザーのドキュメント】
+${additionalContext}
+
+上記の情報を活用しながら、ユーザーの質問に丁寧に答えてください。もし関連情報がドキュメントにあれば、それを引用して答えてください。`;
+      } else {
+        systemPrompt = 'あなたは親切なAIアシスタントです。ユーザーの質問に丁寧に答えてください。まだドキュメントがアップロードされていないようです。';
+      }
+    }
     
     // 会話履歴を取得
     let conversation = await Conversation.findOne({ userId: req.session.user.userId });
@@ -283,16 +348,6 @@ app.post('/api/chat', async (req, res) => {
         messages: []
       });
     }
-    
-    // システムプロンプト（RAG + パーソナライゼーション）
-    const systemPrompt = knowledgeBase 
-      ? `あなたは親切なAIアシスタントです。以下のユーザーがアップロードしたドキュメントの内容を参照して、質問に答えてください。
-
-【ユーザーのドキュメント】
-${knowledgeBase}
-
-上記の情報を活用しながら、ユーザーの質問に丁寧に答えてください。もし関連情報がドキュメントにあれば、それを引用して答えてください。`
-      : 'あなたは親切なAIアシスタントです。ユーザーの質問に丁寧に答えてください。';
     
     // 直近の会話履歴（最大10件）
     const recentMessages = conversation.messages.slice(-10);
@@ -322,16 +377,17 @@ ${knowledgeBase}
     
     await conversation.save();
     
-    console.log(`AI応答: ${aiResponse.substring(0, 100)}...`);
+    console.log(`AI応答 (${mode}モード): ${aiResponse.substring(0, 100)}...`);
     
     res.json({
       success: true,
-      response: aiResponse
+      response: aiResponse,
+      sources: sources.length > 0 ? sources : null
     });
     
   } catch (error) {
     console.error('AIチャットエラー:', error);
-    res.status(500).json({ error: 'AIチャットの処理に失敗しました' });
+    res.status(500).json({ error: error.message || 'AIチャットの処理に失敗しました' });
   }
 });
 

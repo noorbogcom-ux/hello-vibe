@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ハロー！バイブ！チャット</title>
+    <title>BOGs - BOGCOM AI Assistant</title>
     <style>
         * {
             margin: 0;
@@ -11,49 +11,145 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --primary-color: #1e3a8a;
+            --secondary-color: #3b82f6;
+            --accent-color: #60a5fa;
+            --success-color: #00B900;
+            --bg-gradient: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            --text-dark: #1f2937;
+            --text-light: #6b7280;
+            --border-color: #e5e7eb;
+            --bg-light: #f9fafb;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--bg-gradient);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            padding: 10px;
         }
 
         .container {
-            background: rgba(255, 255, 255, 0.95);
+            background: white;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             overflow: hidden;
-            max-width: 800px;
+            max-width: 1000px;
             width: 100%;
             animation: fadeIn 0.5s ease-in;
         }
 
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
+        /* ログインビュー */
+        .login-view {
             text-align: center;
+            padding: 60px 40px;
+        }
+
+        .logo {
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: var(--bg-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .company-name {
+            color: var(--text-light);
+            font-size: 0.9rem;
+            margin-bottom: 40px;
+            letter-spacing: 2px;
+        }
+
+        .login-description {
+            color: var(--text-dark);
+            font-size: 1.1rem;
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+
+        .line-login-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--success-color);
+            color: white;
+            padding: 16px 40px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0, 185, 0, 0.3);
+        }
+
+        .line-login-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 185, 0, 0.4);
+        }
+
+        /* ヘッダー */
+        .header {
+            background: var(--bg-gradient);
+            color: white;
+            padding: 20px 30px;
+        }
+
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
         .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .nav-btn, .logout-btn {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+
+        .nav-btn:hover, .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .nav-btn.active {
+            background: white;
+            color: var(--primary-color);
         }
 
         .user-info {
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 15px;
-            margin-top: 15px;
+            gap: 12px;
         }
 
         .user-avatar {
-            width: 50px;
-            height: 50px;
+            width: 45px;
+            height: 45px;
             border-radius: 50%;
             border: 3px solid white;
         }
@@ -63,140 +159,100 @@
             opacity: 0.9;
         }
 
-        .login-container {
-            padding: 60px 40px;
-            text-align: center;
-        }
-
-        .login-container h2 {
-            color: #667eea;
-            margin-bottom: 20px;
-        }
-
-        .login-container p {
-            color: #666;
-            margin-bottom: 30px;
-        }
-
-        .line-login-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            background: #00B900;
-            color: white;
-            padding: 15px 30px;
-            border-radius: 10px;
-            text-decoration: none;
-            font-weight: bold;
-            font-size: 1.1rem;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .line-login-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 185, 0, 0.4);
-        }
-
-        .logout-btn {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: 2px solid white;
-            padding: 8px 20px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: background 0.3s;
-        }
-
-        .logout-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
+        /* チャットエリア */
         .chat-container {
-            height: 400px;
+            height: 500px;
             overflow-y: auto;
             padding: 20px;
-            background: #f8f9fa;
+            background: var(--bg-light);
         }
 
         .message {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             animation: slideIn 0.3s ease-out;
         }
 
         .message-header {
             display: flex;
             align-items: center;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
             gap: 10px;
         }
 
         .message-avatar {
-            width: 32px;
-            height: 32px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
         }
 
         .username {
-            font-weight: bold;
-            color: #667eea;
+            font-weight: 600;
+            color: var(--primary-color);
         }
 
         .timestamp {
             font-size: 0.8rem;
-            color: #888;
+            color: var(--text-light);
             margin-left: auto;
         }
 
         .message-text {
             background: white;
-            padding: 10px 15px;
-            border-radius: 10px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding: 12px 16px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
             word-wrap: break-word;
-            margin-left: 42px;
+            margin-left: 46px;
+            line-height: 1.5;
         }
 
+        /* 入力エリア */
         .input-container {
             padding: 20px;
             background: white;
-            border-top: 1px solid #e0e0e0;
+            border-top: 1px solid var(--border-color);
         }
 
         .input-row {
             display: flex;
             gap: 10px;
+            align-items: flex-end;
         }
 
-        input {
+        textarea {
             flex: 1;
-            padding: 12px 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
+            padding: 12px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
             font-size: 1rem;
+            font-family: inherit;
+            resize: none;
             transition: border-color 0.3s;
+            min-height: 50px;
+            max-height: 150px;
         }
 
-        input:focus {
+        textarea:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--secondary-color);
         }
 
         button {
-            padding: 12px 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 12px 28px;
+            background: var(--bg-gradient);
             color: white;
             border: none;
-            border-radius: 10px;
+            border-radius: 12px;
             font-size: 1rem;
-            font-weight: bold;
+            font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: all 0.3s;
+            min-height: 50px;
         }
 
         button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
         }
 
         button:active {
@@ -204,9 +260,10 @@
         }
 
         .hidden {
-            display: none;
+            display: none !important;
         }
 
+        /* アニメーション */
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -229,12 +286,61 @@
             }
         }
 
+        /* モバイル対応 */
         @media (max-width: 768px) {
-            .header h1 {
-                font-size: 1.8rem;
+            .logo {
+                font-size: 2.5rem;
             }
+            
+            .login-view {
+                padding: 40px 20px;
+            }
+
+            .header {
+                padding: 15px 20px;
+            }
+
+            .header h1 {
+                font-size: 1.4rem;
+            }
+
+            .header-top {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .nav-buttons {
+                width: 100%;
+            }
+
+            .nav-btn, .logout-btn {
+                flex: 1;
+                text-align: center;
+                font-size: 0.85rem;
+                padding: 8px 12px;
+            }
+
             .chat-container {
-                height: 300px;
+                height: calc(100vh - 350px);
+                min-height: 300px;
+            }
+
+            .user-avatar {
+                width: 35px;
+                height: 35px;
+            }
+
+            .message-avatar {
+                width: 32px;
+                height: 32px;
+            }
+
+            .message-text {
+                margin-left: 42px;
+            }
+
+            textarea {
+                font-size: 16px; /* iOS zoom防止 */
             }
         }
     </style>
@@ -243,12 +349,13 @@
     <div class="container">
         <!-- ログイン前の画面 -->
         <div id="loginView" class="hidden">
-            <div class="header">
-                <h1>💬 ハロー！バイブ！チャット</h1>
-            </div>
-            <div class="login-container">
-                <h2>チャットを始めよう！</h2>
-                <p>LINEでログインして、リアルタイムチャットを楽しもう！</p>
+            <div class="login-view">
+                <div class="logo">BOGs</div>
+                <div class="company-name">BOGCOM AI ASSISTANT</div>
+                <div class="login-description">
+                    社内AIアシスタントへようこそ<br>
+                    LINEでログインして、AIチャットとドキュメント分析をご利用いただけます
+                </div>
                 <a href="/auth/line" class="line-login-btn">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
                         <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.771.039 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/>
@@ -261,31 +368,36 @@
         <!-- ログイン後の画面 -->
         <div id="chatView" class="hidden">
             <div class="header">
-                <h1>💬 ハロー！バイブ！チャット</h1>
+                <div class="header-top">
+                    <h1>💬 BOGs チャット</h1>
+                    <div class="nav-buttons">
+                        <a href="/" class="nav-btn active">チャット</a>
+                        <a href="/chat.html" class="nav-btn">🤖 AI</a>
+                        <a href="/auth/logout" class="logout-btn">ログアウト</a>
+                    </div>
+                </div>
                 <div class="user-info">
                     <img id="userAvatar" class="user-avatar" src="" alt="アバター">
                     <span id="userName"></span>
-                    <a href="/chat.html" style="background: #00B900; color: white; padding: 8px 20px; border-radius: 8px; text-decoration: none; margin-left: 10px;">🤖 AIチャット</a>
-                    <a href="/auth/logout" class="logout-btn">ログアウト</a>
+                    <span class="user-count">・オンライン: <span id="userCount">0</span>人</span>
                 </div>
-                <div class="user-count">オンライン: <span id="userCount">0</span>人</div>
             </div>
             
             <div class="chat-container" id="messages">
                 <div class="message">
                     <div class="message-header">
-                        <span class="username">システム</span>
+                        <span class="username">BOGs</span>
                         <span class="timestamp">--:--:--</span>
                     </div>
                     <div class="message-text">
-                        チャットへようこそ！🎉 メッセージを送信してみてください！
+                        BOGsチャットへようこそ！リアルタイムで他のメンバーとコミュニケーションできます 🎉
                     </div>
                 </div>
             </div>
             
             <div class="input-container">
                 <div class="input-row">
-                    <input type="text" id="messageInput" placeholder="メッセージを入力..." maxlength="500">
+                    <textarea id="messageInput" placeholder="メッセージを入力... (Shift+Enterで送信)" rows="1"></textarea>
                     <button onclick="sendMessage()">送信</button>
                 </div>
             </div>
@@ -329,23 +441,19 @@
         function initSocket() {
             socket = io();
             
-            // ユーザー数の更新
             socket.on('user count', (count) => {
                 document.getElementById('userCount').textContent = count;
             });
             
-            // メッセージを受信
             socket.on('chat message', (msg) => {
                 addMessage(msg);
             });
 
-            // エラーハンドリング
             socket.on('error', (msg) => {
                 alert(msg);
             });
         }
         
-        // メッセージを送信
         function sendMessage() {
             const messageInput = document.getElementById('messageInput');
             const text = messageInput.value.trim();
@@ -357,9 +465,9 @@
             });
             
             messageInput.value = '';
+            messageInput.style.height = 'auto';
         }
         
-        // メッセージを画面に追加
         function addMessage(msg) {
             const messagesDiv = document.getElementById('messages');
             const messageDiv = document.createElement('div');
@@ -375,30 +483,43 @@
                     <span class="username">${escapeHtml(msg.username)}</span>
                     <span class="timestamp">${msg.timestamp}</span>
                 </div>
-                <div class="message-text">${escapeHtml(msg.text)}</div>
+                <div class="message-text">${escapeHtml(msg.text).replace(/\n/g, '<br>')}</div>
             `;
             
             messagesDiv.appendChild(messageDiv);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
         
-        // HTMLエスケープ（XSS対策）
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
         }
         
-        // Enterキーで送信
+        // テキストエリアの自動リサイズ
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 150) + 'px';
+        }
+        
         document.addEventListener('DOMContentLoaded', () => {
             checkAuth();
             
             const messageInput = document.getElementById('messageInput');
             if (messageInput) {
-                messageInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
+                // Enterで改行、Shift+Enterで送信
+                messageInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && e.shiftKey) {
+                        e.preventDefault();
                         sendMessage();
+                    } else if (e.key === 'Enter' && !e.shiftKey) {
+                        // Enterキーのデフォルト動作（改行）を許可
                     }
+                });
+
+                // 自動リサイズ
+                messageInput.addEventListener('input', function() {
+                    autoResize(this);
                 });
             }
         });
