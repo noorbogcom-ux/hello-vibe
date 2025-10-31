@@ -27,9 +27,15 @@ jobs:
           LINE_CHANNEL_ID: ${{ secrets.LINE_CHANNEL_ID }}
           LINE_CHANNEL_SECRET: ${{ secrets.LINE_CHANNEL_SECRET }}
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
         run: |
           # プロジェクトファイルをEC2にコピー
-          scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa -r public server.js package.json ${USER_NAME}@${HOSTNAME}:/home/ubuntu/hello-vibe/
+          scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa -r public server.js package.json models ${USER_NAME}@${HOSTNAME}:/home/ubuntu/hello-vibe/
+          
+          # uploadsディレクトリを作成（存在しない場合）
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa ${USER_NAME}@${HOSTNAME} \
+            "mkdir -p /home/ubuntu/hello-vibe/uploads"
           
           # サーバーをセットアップして起動
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa ${USER_NAME}@${HOSTNAME} \
@@ -38,10 +44,12 @@ jobs:
             echo 'LINE_CHANNEL_SECRET=${LINE_CHANNEL_SECRET}' >> .env && \
             echo 'LINE_CALLBACK_URL=http://${HOSTNAME}/auth/line/callback' >> .env && \
             echo 'SESSION_SECRET=${SESSION_SECRET}' >> .env && \
+            echo 'OPENAI_API_KEY=${OPENAI_API_KEY}' >> .env && \
+            echo 'MONGODB_URI=${MONGODB_URI}' >> .env && \
             echo 'PORT=3000' >> .env && \
             npm install --production && \
             pm2 delete hello-vibe || true && \
             pm2 start server.js --name hello-vibe && \
             pm2 save && \
-            echo 'デプロイ完了'"
+            echo 'RAGシステムのデプロイ完了'"
 

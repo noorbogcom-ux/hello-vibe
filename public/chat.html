@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIチャット - ハロー！バイブ！</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+        }
+
+        .logout-btn {
+            margin-left: auto;
+            padding: 8px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+        }
+
+        .sidebar {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            height: fit-content;
+        }
+
+        .sidebar h2 {
+            color: #667eea;
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+        }
+
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-area:hover {
+            background: #f0f0f0;
+        }
+
+        .upload-area input[type="file"] {
+            display: none;
+        }
+
+        .document-list {
+            margin-top: 20px;
+        }
+
+        .document-item {
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+
+        .chat-area {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .message.user {
+            text-align: right;
+        }
+
+        .message.ai {
+            text-align: left;
+        }
+
+        .message-bubble {
+            display: inline-block;
+            max-width: 70%;
+            padding: 12px 18px;
+            border-radius: 18px;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .message.user .message-bubble {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message.ai .message-bubble {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .chat-input-area {
+            padding: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 12px 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            color: #888;
+            padding: 10px;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AIアシスタント</h1>
+            <div class="user-info">
+                <img id="userAvatar" class="user-avatar" src="" alt="アバター">
+                <span id="userName"></span>
+                <a href="/" class="logout-btn">チャットに戻る</a>
+                <a href="/auth/logout" class="logout-btn">ログアウト</a>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <h2>📁 ドキュメント</h2>
+                <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                    <input type="file" id="fileInput" accept=".pdf,.docx,.txt">
+                    <p>📤 クリックしてファイルをアップロード</p>
+                    <small>PDF, Word, テキスト (最大10MB)</small>
+                </div>
+                <div class="document-list" id="documentList"></div>
+            </div>
+
+            <div class="chat-area">
+                <div class="chat-messages" id="messages">
+                    <div class="message ai">
+                        <div class="message-bubble">
+                            こんにちは！私はあなたの AI アシスタントです。<br>
+                            ドキュメントをアップロードすると、その内容について質問できますよ！🤖✨
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-input-area">
+                    <div class="input-row">
+                        <input type="text" id="messageInput" placeholder="メッセージを入力..." maxlength="1000">
+                        <button onclick="sendMessage()" id="sendBtn">送信</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+
+        // 認証状態をチェック
+        async function checkAuth() {
+            try {
+                const response = await fetch('/api/user');
+                if (response.ok) {
+                    currentUser = await response.json();
+                    document.getElementById('userName').textContent = currentUser.displayName;
+                    document.getElementById('userAvatar').src = currentUser.pictureUrl;
+                    loadDocuments();
+                } else {
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                console.error('認証チェックエラー:', error);
+                window.location.href = '/';
+            }
+        }
+
+        // ドキュメント一覧を取得
+        async function loadDocuments() {
+            try {
+                const response = await fetch('/api/documents');
+                if (response.ok) {
+                    const documents = await response.json();
+                    const listDiv = document.getElementById('documentList');
+                    
+                    if (documents.length === 0) {
+                        listDiv.innerHTML = '<p style="color: #888; font-size: 0.9rem; margin-top: 10px;">まだドキュメントがありません</p>';
+                    } else {
+                        listDiv.innerHTML = documents.map(doc => `
+                            <div class="document-item">
+                                📄 ${doc.originalName}<br>
+                                <small>${(doc.fileSize / 1024).toFixed(1)} KB</small>
+                            </div>
+                        `).join('');
+                    }
+                }
+            } catch (error) {
+                console.error('ドキュメント取得エラー:', error);
+            }
+        }
+
+        // ファイルアップロード
+        document.getElementById('fileInput').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                addMessage('ai', `📤 "${file.name}" をアップロード中...`);
+                
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    addMessage('ai', `✅ "${result.filename}" のアップロードが完了しました！\n${result.textLength}文字のテキストを抽出しました。`);
+                    loadDocuments();
+                } else {
+                    addMessage('ai', '❌ アップロードに失敗しました');
+                }
+            } catch (error) {
+                console.error('アップロードエラー:', error);
+                addMessage('ai', '❌ アップロードに失敗しました');
+            }
+
+            e.target.value = '';
+        });
+
+        // メッセージを送信
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+
+            addMessage('user', message);
+            input.value = '';
+
+            const sendBtn = document.getElementById('sendBtn');
+            sendBtn.disabled = true;
+            sendBtn.textContent = '送信中...';
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    addMessage('ai', result.response);
+                } else {
+                    addMessage('ai', '❌ エラーが発生しました');
+                }
+            } catch (error) {
+                console.error('チャットエラー:', error);
+                addMessage('ai', '❌ エラーが発生しました');
+            }
+
+            sendBtn.disabled = false;
+            sendBtn.textContent = '送信';
+        }
+
+        // メッセージを画面に追加
+        function addMessage(type, text) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+            bubble.textContent = text;
+            
+            messageDiv.appendChild(bubble);
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Enterキーで送信
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // 初期化
+        checkAuth();
+    </script>
+</body>
+</html>
+

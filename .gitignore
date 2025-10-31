@@ -26,6 +26,9 @@ npm-debug.log*
 node_modules/
 package-lock.json
 
+# Uploads（アップロードされたファイル）
+uploads/
+
 # Environment variables（絶対にGitHubにプッシュしない！）
 .env
 .env.local
