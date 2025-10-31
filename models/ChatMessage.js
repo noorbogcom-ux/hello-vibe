@@ -23,6 +23,11 @@ const chatMessageSchema = new mongoose.Schema({
     default: 'general',
     index: true
   },
+  deleted: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
   timestamp: {
     type: Date,
     default: Date.now,

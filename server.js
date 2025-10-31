@@ -200,8 +200,8 @@ app.get('/api/chat-history', async (req, res) => {
       return res.status(403).json({ error: 'アクセス権限がありません' });
     }
     
-    // 最新50件のメッセージを取得（チャンネルでフィルタ）
-    const messages = await ChatMessage.find({ channel })
+    // 最新50件のメッセージを取得（チャンネルでフィルタ、削除済み除外）
+    const messages = await ChatMessage.find({ channel, deleted: false })
       .sort({ timestamp: -1 })
       .limit(limit);
     
@@ -263,7 +263,7 @@ app.post('/api/bogs-advice', async (req, res) => {
     
     const { messageCount = 30 } = req.body;
     
-    // アドミンチャットの履歴を取得
+    // アドミンチャットの履歴を取得（削除済みも含む - AIの学習用）
     const recentMessages = await ChatMessage.find({ channel: 'admin' })
       .sort({ timestamp: -1 })
       .limit(messageCount);
@@ -319,7 +319,7 @@ app.post('/api/bogs-advice', async (req, res) => {
   }
 });
 
-// メッセージ削除API
+// メッセージ削除API（論理削除）
 app.delete('/api/chat-message/:messageId', async (req, res) => {
   try {
     if (!req.session.user) {
@@ -340,10 +340,11 @@ app.delete('/api/chat-message/:messageId', async (req, res) => {
       return res.status(403).json({ error: '他のユーザーのメッセージは削除できません' });
     }
     
-    // メッセージを削除
-    await ChatMessage.findByIdAndDelete(messageId);
+    // 論理削除（deleted フラグを立てる）
+    message.deleted = true;
+    await message.save();
     
-    console.log(`メッセージ削除: ${messageId} by ${req.session.user.displayName}`);
+    console.log(`メッセージ論理削除: ${messageId} by ${req.session.user.displayName}`);
     
     res.json({ success: true, messageId });
     
@@ -386,7 +387,7 @@ app.post('/api/facilitator', async (req, res) => {
     
     const { command, messageCount = 20 } = req.body;
     
-    // 最近のチャットメッセージを取得
+    // 最近のチャットメッセージを取得（削除済みも含む - AIの学習用）
     const recentMessages = await ChatMessage.find()
       .sort({ timestamp: -1 })
       .limit(messageCount);
