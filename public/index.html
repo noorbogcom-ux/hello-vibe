@@ -382,14 +382,16 @@
                     <span class="user-count">・オンライン: <span id="userCount">0</span>人</span>
                 </div>
                 <!-- チャンネル切り替え -->
-                <div class="mode-toggle" style="margin-top: 15px; display: flex; gap: 10px;">
-                    <button class="mode-btn active" onclick="switchChannel('general')" style="flex: 1; padding: 10px; background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.3); color: white; border-radius: 10px; cursor: pointer; font-weight: 600;">
-                        💬 オープンチャット
-                    </button>
-                    <button id="adminChannelBtn" class="mode-btn" onclick="switchChannel('admin')" style="flex: 1; padding: 10px; background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.3); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; display: none;">
-                        👔 アドミンチャット
-                    </button>
-                    <button id="bogsAdviceBtn" onclick="askBogsAdvice()" style="padding: 10px 20px; background: #8b5cf6; border: none; color: white; border-radius: 10px; cursor: pointer; font-weight: 600; display: none;">
+                <div style="margin-top: 15px;">
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <button class="mode-btn active" onclick="switchChannel('general')" style="flex: 1; padding: 10px; background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.3); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem;">
+                            💬 オープンチャット
+                        </button>
+                        <button id="adminChannelBtn" class="mode-btn" onclick="switchChannel('admin')" style="flex: 1; padding: 10px; background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.3); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem; display: none;">
+                            👔 アドミンチャット
+                        </button>
+                    </div>
+                    <button id="bogsAdviceBtn" onclick="askBogsAdvice()" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); border: none; color: white; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 0.95rem; display: none; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4); transition: all 0.3s;">
                         🤖 BOGsに意見を聞く
                     </button>
                 </div>
