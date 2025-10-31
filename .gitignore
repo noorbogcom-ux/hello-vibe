@@ -9,6 +9,8 @@ Thumbs.db
 # AWS認証情報 (絶対にGitHubにプッシュしない！)
 *credentials.csv
 AWSCLI.txt
+env.txt
+*.txt
 
 # IDE
 .vscode/
@@ -24,7 +26,7 @@ npm-debug.log*
 node_modules/
 package-lock.json
 
-# Environment variables
+# Environment variables（絶対にGitHubにプッシュしない！）
 .env
 .env.local
 .env.*.local

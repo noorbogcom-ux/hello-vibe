@@ -24,17 +24,31 @@ jobs:
         env:
           HOSTNAME: ${{ secrets.EC2_HOST }}
           USER_NAME: ubuntu
+          LINE_CHANNEL_ID: ${{ secrets.LINE_CHANNEL_ID }}
+          LINE_CHANNEL_SECRET: ${{ secrets.LINE_CHANNEL_SECRET }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
         run: |
           # プロジェクトファイルをEC2にコピー
           scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa -r public server.js package.json ${USER_NAME}@${HOSTNAME}:/home/ubuntu/hello-vibe/
           
           # サーバーをセットアップして起動
-          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa ${USER_NAME}@${HOSTNAME} '
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa ${USER_NAME}@${HOSTNAME} "
             cd /home/ubuntu/hello-vibe
+            
+            # .envファイルを作成
+            cat > .env << EOF
+LINE_CHANNEL_ID=${LINE_CHANNEL_ID}
+LINE_CHANNEL_SECRET=${LINE_CHANNEL_SECRET}
+LINE_CALLBACK_URL=http://${HOSTNAME}/auth/line/callback
+SESSION_SECRET=${SESSION_SECRET}
+PORT=3000
+EOF
+            
+            # パッケージインストールと起動
             npm install --production
             pm2 delete hello-vibe || true
             pm2 start server.js --name hello-vibe
             pm2 save
-            echo "✅ デプロイ完了！"
-          '
+            echo '✅ デプロイ完了！'
+          "
 

@@ -43,9 +43,73 @@
             margin-bottom: 10px;
         }
 
+        .user-info {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 3px solid white;
+        }
+
         .user-count {
             font-size: 0.9rem;
             opacity: 0.9;
+        }
+
+        .login-container {
+            padding: 60px 40px;
+            text-align: center;
+        }
+
+        .login-container h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .login-container p {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .line-login-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: #00B900;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .line-login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 185, 0, 0.4);
+        }
+
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+            padding: 8px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: background 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
 
         .chat-container {
@@ -64,17 +128,24 @@
             display: flex;
             align-items: center;
             margin-bottom: 5px;
+            gap: 10px;
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
         }
 
         .username {
             font-weight: bold;
             color: #667eea;
-            margin-right: 10px;
         }
 
         .timestamp {
             font-size: 0.8rem;
             color: #888;
+            margin-left: auto;
         }
 
         .message-text {
@@ -83,6 +154,7 @@
             border-radius: 10px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             word-wrap: break-word;
+            margin-left: 42px;
         }
 
         .input-container {
@@ -94,7 +166,6 @@
         .input-row {
             display: flex;
             gap: 10px;
-            margin-bottom: 10px;
         }
 
         input {
@@ -132,6 +203,10 @@
             transform: translateY(0);
         }
 
+        .hidden {
+            display: none;
+        }
+
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -161,69 +236,123 @@
             .chat-container {
                 height: 300px;
             }
-            .input-row {
-                flex-direction: column;
-            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>💬 ハロー！バイブ！チャット</h1>
-            <div class="user-count">オンライン: <span id="userCount">0</span>人</div>
-        </div>
-        
-        <div class="chat-container" id="messages">
-            <div class="message">
-                <div class="message-header">
-                    <span class="username">システム</span>
-                    <span class="timestamp">--:--:--</span>
-                </div>
-                <div class="message-text">
-                    チャットへようこそ！🎉 メッセージを送信してみてください！
-                </div>
+        <!-- ログイン前の画面 -->
+        <div id="loginView" class="hidden">
+            <div class="header">
+                <h1>💬 ハロー！バイブ！チャット</h1>
+            </div>
+            <div class="login-container">
+                <h2>チャットを始めよう！</h2>
+                <p>LINEでログインして、リアルタイムチャットを楽しもう！</p>
+                <a href="/auth/line" class="line-login-btn">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                        <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.771.039 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/>
+                    </svg>
+                    LINEでログイン
+                </a>
             </div>
         </div>
-        
-        <div class="input-container">
-            <div class="input-row">
-                <input type="text" id="username" placeholder="ニックネーム" maxlength="20">
+
+        <!-- ログイン後の画面 -->
+        <div id="chatView" class="hidden">
+            <div class="header">
+                <h1>💬 ハロー！バイブ！チャット</h1>
+                <div class="user-info">
+                    <img id="userAvatar" class="user-avatar" src="" alt="アバター">
+                    <span id="userName"></span>
+                    <a href="/auth/logout" class="logout-btn">ログアウト</a>
+                </div>
+                <div class="user-count">オンライン: <span id="userCount">0</span>人</div>
             </div>
-            <div class="input-row">
-                <input type="text" id="messageInput" placeholder="メッセージを入力..." maxlength="500">
-                <button onclick="sendMessage()">送信</button>
+            
+            <div class="chat-container" id="messages">
+                <div class="message">
+                    <div class="message-header">
+                        <span class="username">システム</span>
+                        <span class="timestamp">--:--:--</span>
+                    </div>
+                    <div class="message-text">
+                        チャットへようこそ！🎉 メッセージを送信してみてください！
+                    </div>
+                </div>
+            </div>
+            
+            <div class="input-container">
+                <div class="input-row">
+                    <input type="text" id="messageInput" placeholder="メッセージを入力..." maxlength="500">
+                    <button onclick="sendMessage()">送信</button>
+                </div>
             </div>
         </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io();
-        
-        // ユーザー数の更新
-        socket.on('user count', (count) => {
-            document.getElementById('userCount').textContent = count;
-        });
-        
-        // メッセージを受信
-        socket.on('chat message', (msg) => {
-            addMessage(msg);
-        });
+        let socket;
+        let currentUser = null;
+
+        // 認証状態をチェック
+        async function checkAuth() {
+            try {
+                const response = await fetch('/api/user');
+                if (response.ok) {
+                    currentUser = await response.json();
+                    showChatView();
+                    initSocket();
+                } else {
+                    showLoginView();
+                }
+            } catch (error) {
+                console.error('認証チェックエラー:', error);
+                showLoginView();
+            }
+        }
+
+        function showLoginView() {
+            document.getElementById('loginView').classList.remove('hidden');
+            document.getElementById('chatView').classList.add('hidden');
+        }
+
+        function showChatView() {
+            document.getElementById('loginView').classList.add('hidden');
+            document.getElementById('chatView').classList.remove('hidden');
+            document.getElementById('userName').textContent = currentUser.displayName;
+            document.getElementById('userAvatar').src = currentUser.pictureUrl;
+        }
+
+        function initSocket() {
+            socket = io();
+            
+            // ユーザー数の更新
+            socket.on('user count', (count) => {
+                document.getElementById('userCount').textContent = count;
+            });
+            
+            // メッセージを受信
+            socket.on('chat message', (msg) => {
+                addMessage(msg);
+            });
+
+            // エラーハンドリング
+            socket.on('error', (msg) => {
+                alert(msg);
+            });
+        }
         
         // メッセージを送信
         function sendMessage() {
             const messageInput = document.getElementById('messageInput');
-            const usernameInput = document.getElementById('username');
             const text = messageInput.value.trim();
             
-            if (text === '') return;
-            
-            const username = usernameInput.value.trim() || '匿名';
+            if (text === '' || !socket) return;
             
             socket.emit('chat message', {
-                text: text,
-                username: username
+                text: text
             });
             
             messageInput.value = '';
@@ -235,8 +364,13 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message';
             
+            const avatarHtml = msg.pictureUrl 
+                ? `<img src="${escapeHtml(msg.pictureUrl)}" class="message-avatar" alt="アバター">`
+                : '';
+            
             messageDiv.innerHTML = `
                 <div class="message-header">
+                    ${avatarHtml}
                     <span class="username">${escapeHtml(msg.username)}</span>
                     <span class="timestamp">${msg.timestamp}</span>
                 </div>
@@ -255,15 +389,16 @@
         }
         
         // Enterキーで送信
-        document.getElementById('messageInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
-        });
-        
-        document.getElementById('username').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                document.getElementById('messageInput').focus();
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuth();
+            
+            const messageInput = document.getElementById('messageInput');
+            if (messageInput) {
+                messageInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        sendMessage();
+                    }
+                });
             }
         });
     </script>
