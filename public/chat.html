@@ -571,6 +571,42 @@
         let currentUser = null;
         let currentMode = 'rag'; // 'rag' or 'web'
         let isLoading = false;
+        let audioContext = null;
+
+        // 効果音を生成・再生
+        function playSoundEffect(type) {
+            try {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                if (type === 'send') {
+                    // 送信音: 軽快な高音
+                    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(1000, audioContext.currentTime + 0.1);
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.1);
+                } else if (type === 'receive') {
+                    // 受信音: 柔らかい低音（AI応答用）
+                    oscillator.frequency.setValueAtTime(650, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(550, audioContext.currentTime + 0.15);
+                    gainNode.gain.setValueAtTime(0.25, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.15);
+                }
+            } catch (error) {
+                console.log('効果音再生エラー:', error);
+            }
+        }
 
         // 認証状態をチェック
         async function checkAuth() {
@@ -580,12 +616,44 @@
                     currentUser = await response.json();
                     document.getElementById('userName').textContent = currentUser.displayName;
                     document.getElementById('userAvatar').src = currentUser.pictureUrl;
+                    await loadConversationHistory();
                 } else {
                     window.location.href = '/';
                 }
             } catch (error) {
                 console.error('認証チェックエラー:', error);
                 window.location.href = '/';
+            }
+        }
+
+        // AI会話履歴をロード
+        async function loadConversationHistory() {
+            try {
+                const response = await fetch('/api/conversation-history?limit=20');
+                if (response.ok) {
+                    const data = await response.json();
+                    const chatMessages = document.getElementById('chatMessages');
+                    
+                    if (data.messages.length > 0) {
+                        // ウェルカムメッセージをクリア
+                        chatMessages.innerHTML = '';
+                        
+                        // 会話履歴を表示
+                        data.messages.forEach(msg => {
+                            if (msg.role === 'user') {
+                                addUserMessage(msg.content, false); // 効果音なし
+                            } else if (msg.role === 'assistant') {
+                                addAIMessage(msg.content, null, false); // 効果音なし
+                            }
+                        });
+                        
+                        console.log(`AI会話履歴 ${data.messages.length}件 を読み込みました`);
+                    }
+                } else {
+                    console.error('AI会話履歴の取得に失敗しました');
+                }
+            } catch (error) {
+                console.error('AI会話履歴読み込みエラー:', error);
             }
         }
 
@@ -689,8 +757,11 @@
             
             if (!message) return;
 
+            // 送信音を鳴らす
+            playSoundEffect('send');
+
             // ユーザーメッセージを表示
-            addUserMessage(message);
+            addUserMessage(message, true);
             messageInput.value = '';
             messageInput.style.height = 'auto';
 
@@ -717,14 +788,16 @@
                 removeLoadingMessage(loadingId);
 
                 if (response.ok) {
-                    addAIMessage(result.response, result.sources);
+                    // 受信音を鳴らす
+                    playSoundEffect('receive');
+                    addAIMessage(result.response, result.sources, true);
                 } else {
-                    addAIMessage(`エラー: ${result.error}`, null);
+                    addAIMessage(`エラー: ${result.error}`, null, false);
                 }
             } catch (error) {
                 console.error('送信エラー:', error);
                 removeLoadingMessage(loadingId);
-                addAIMessage('エラーが発生しました。もう一度お試しください。', null);
+                addAIMessage('エラーが発生しました。もう一度お試しください。', null, false);
             } finally {
                 isLoading = false;
                 document.getElementById('sendBtn').disabled = false;
@@ -732,7 +805,7 @@
         }
 
         // ユーザーメッセージを追加
-        function addUserMessage(text) {
+        function addUserMessage(text, playSound = false) {
             const chatMessages = document.getElementById('chatMessages');
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message user';
@@ -747,7 +820,7 @@
         }
 
         // AIメッセージを追加
-        function addAIMessage(text, sources) {
+        function addAIMessage(text, sources, playSound = false) {
             const chatMessages = document.getElementById('chatMessages');
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message ai';

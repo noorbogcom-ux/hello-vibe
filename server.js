@@ -214,6 +214,33 @@ app.get('/api/chat-history', async (req, res) => {
   }
 });
 
+// AI会話履歴取得API
+app.get('/api/conversation-history', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.status(401).json({ error: 'ログインが必要です' });
+    }
+    
+    const limit = parseInt(req.query.limit) || 20; // デフォルト20件（10往復）
+    
+    // ユーザーの会話履歴を取得
+    const conversation = await Conversation.findOne({ userId: req.session.user.userId });
+    
+    if (!conversation || conversation.messages.length === 0) {
+      return res.json({ messages: [] });
+    }
+    
+    // 最新のlimit件を取得（古い順）
+    const recentMessages = conversation.messages.slice(-limit);
+    
+    res.json({ messages: recentMessages });
+    
+  } catch (error) {
+    console.error('AI会話履歴取得エラー:', error);
+    res.status(500).json({ error: 'AI会話履歴の取得に失敗しました' });
+  }
+});
+
 // ファイルアップロードAPI
 app.post('/api/upload', upload.single('file'), async (req, res) => {
   try {
