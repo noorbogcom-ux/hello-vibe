@@ -32,21 +32,16 @@ jobs:
           scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa -r public server.js package.json ${USER_NAME}@${HOSTNAME}:/home/ubuntu/hello-vibe/
           
           # サーバーをセットアップして起動
-          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa ${USER_NAME}@${HOSTNAME} << 'ENDSSH'
-            cd /home/ubuntu/hello-vibe
-            
-            # .envファイルを作成
-            echo "LINE_CHANNEL_ID=${LINE_CHANNEL_ID}" > .env
-            echo "LINE_CHANNEL_SECRET=${LINE_CHANNEL_SECRET}" >> .env
-            echo "LINE_CALLBACK_URL=http://${HOSTNAME}/auth/line/callback" >> .env
-            echo "SESSION_SECRET=${SESSION_SECRET}" >> .env
-            echo "PORT=3000" >> .env
-            
-            # パッケージインストールと起動
-            npm install --production
-            pm2 delete hello-vibe || true
-            pm2 start server.js --name hello-vibe
-            pm2 save
-            echo "✅ デプロイ完了！"
-ENDSSH
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa ${USER_NAME}@${HOSTNAME} \
+            "cd /home/ubuntu/hello-vibe && \
+            echo 'LINE_CHANNEL_ID=${LINE_CHANNEL_ID}' > .env && \
+            echo 'LINE_CHANNEL_SECRET=${LINE_CHANNEL_SECRET}' >> .env && \
+            echo 'LINE_CALLBACK_URL=http://${HOSTNAME}/auth/line/callback' >> .env && \
+            echo 'SESSION_SECRET=${SESSION_SECRET}' >> .env && \
+            echo 'PORT=3000' >> .env && \
+            npm install --production && \
+            pm2 delete hello-vibe || true && \
+            pm2 start server.js --name hello-vibe && \
+            pm2 save && \
+            echo 'デプロイ完了'"
 
