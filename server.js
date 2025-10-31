@@ -207,9 +207,11 @@ app.get('/api/chat-history', async (req, res) => {
     
     // 古い順に並び替えて返す
     const sortedMessages = messages.reverse().map(msg => ({
+      _id: msg._id.toString(),
       text: msg.text,
       username: msg.username,
       pictureUrl: msg.pictureUrl,
+      userId: msg.userId,
       timestamp: new Date(msg.timestamp).toLocaleTimeString('ja-JP')
     }));
     
@@ -314,6 +316,64 @@ app.post('/api/bogs-advice', async (req, res) => {
   } catch (error) {
     console.error('BOGsアドバイスエラー:', error);
     res.status(500).json({ error: 'アドバイス生成に失敗しました' });
+  }
+});
+
+// メッセージ削除API
+app.delete('/api/chat-message/:messageId', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.status(401).json({ error: 'ログインが必要です' });
+    }
+    
+    const { messageId } = req.params;
+    
+    // メッセージを取得
+    const message = await ChatMessage.findById(messageId);
+    
+    if (!message) {
+      return res.status(404).json({ error: 'メッセージが見つかりません' });
+    }
+    
+    // 自分のメッセージのみ削除可能
+    if (message.userId !== req.session.user.userId) {
+      return res.status(403).json({ error: '他のユーザーのメッセージは削除できません' });
+    }
+    
+    // メッセージを削除
+    await ChatMessage.findByIdAndDelete(messageId);
+    
+    console.log(`メッセージ削除: ${messageId} by ${req.session.user.displayName}`);
+    
+    res.json({ success: true, messageId });
+    
+  } catch (error) {
+    console.error('メッセージ削除エラー:', error);
+    res.status(500).json({ error: 'メッセージの削除に失敗しました' });
+  }
+});
+
+// AI会話履歴クリアAPI
+app.delete('/api/conversation-history', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.status(401).json({ error: 'ログインが必要です' });
+    }
+    
+    // ユーザーの会話履歴を削除
+    const conversation = await Conversation.findOne({ userId: req.session.user.userId });
+    
+    if (conversation) {
+      conversation.messages = [];
+      await conversation.save();
+      console.log(`AI会話履歴をクリアしました: ${req.session.user.displayName}`);
+    }
+    
+    res.json({ success: true, message: '会話履歴をクリアしました' });
+    
+  } catch (error) {
+    console.error('AI会話履歴クリアエラー:', error);
+    res.status(500).json({ error: '会話履歴のクリアに失敗しました' });
   }
 });
 
@@ -639,15 +699,8 @@ io.on('connection', (socket) => {
     
     console.log(`[${channel}] メッセージ:`, msg.text, 'from', session.user.displayName);
     
-    const messageData = {
-      text: msg.text,
-      username: session.user.displayName,
-      pictureUrl: session.user.pictureUrl,
-      timestamp: new Date().toLocaleTimeString('ja-JP'),
-      channel: channel
-    };
-    
     // MongoDBに保存
+    let savedMessage;
     try {
       const chatMessage = new ChatMessage({
         userId: session.user.userId,
@@ -656,11 +709,22 @@ io.on('connection', (socket) => {
         text: msg.text,
         channel: channel
       });
-      await chatMessage.save();
+      savedMessage = await chatMessage.save();
       console.log(`[${channel}] チャットメッセージをDBに保存しました`);
     } catch (error) {
       console.error('チャットメッセージ保存エラー:', error);
+      return;
     }
+    
+    const messageData = {
+      _id: savedMessage._id.toString(),
+      text: msg.text,
+      username: session.user.displayName,
+      pictureUrl: session.user.pictureUrl,
+      userId: session.user.userId,
+      timestamp: new Date().toLocaleTimeString('ja-JP'),
+      channel: channel
+    };
     
     // チャンネル別にブロードキャスト
     if (channel === 'admin') {
@@ -673,6 +737,31 @@ io.on('connection', (socket) => {
     } else {
       // 一般チャンネルは全員に配信
       io.emit('chat message', messageData);
+    }
+  });
+  
+  // メッセージ削除イベント
+  socket.on('delete message', async (data) => {
+    if (!session.user) {
+      socket.emit('error', 'ログインが必要です');
+      return;
+    }
+    
+    const { messageId, channel } = data;
+    
+    console.log(`メッセージ削除リクエスト: ${messageId} by ${session.user.displayName}`);
+    
+    // チャンネル別にブロードキャスト
+    if (channel === 'admin') {
+      // アドミンチャンネルはアドミンのみに配信
+      io.sockets.sockets.forEach((s) => {
+        if (s.request.session && s.request.session.user && s.request.session.user.role === 'admin') {
+          s.emit('message deleted', { messageId });
+        }
+      });
+    } else {
+      // 一般チャンネルは全員に配信
+      io.emit('message deleted', { messageId });
     }
   });
   

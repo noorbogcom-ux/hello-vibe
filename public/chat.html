@@ -518,6 +518,9 @@
                     🌐 Webモード - リアルタイム検索
                 </button>
             </div>
+            <button onclick="clearConversationHistory()" style="width: 100%; margin-top: 10px; padding: 8px; background: #ef4444; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">
+                🗑️ 会話履歴をクリア
+            </button>
         </div>
 
         <!-- ファイルアップロード（RAGモードのみ） -->
@@ -892,6 +895,43 @@
             return div.innerHTML;
         }
 
+        // 会話履歴をクリア
+        async function clearConversationHistory() {
+            if (!confirm('会話履歴を全て削除しますか？この操作は取り消せません。')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/conversation-history', {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // チャット画面をクリア
+                    const chatMessages = document.getElementById('chatMessages');
+                    chatMessages.innerHTML = `
+                        <div class="message ai">
+                            <div class="message-header">
+                                <span class="ai-badge">AI</span>
+                                <span>BOGs</span>
+                            </div>
+                            <div class="message-bubble">
+                                会話履歴をクリアしました。新しい会話を始めましょう🤖
+                            </div>
+                        </div>
+                    `;
+                    alert('会話履歴をクリアしました');
+                } else {
+                    alert('削除に失敗しました: ' + result.error);
+                }
+            } catch (error) {
+                console.error('削除エラー:', error);
+                alert('削除に失敗しました');
+            }
+        }
+        
         // テキストエリアの自動リサイズ
         function autoResize(textarea) {
             textarea.style.height = 'auto';

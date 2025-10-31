@@ -565,6 +565,16 @@
                 playSoundEffect('receive');
                 addFacilitatorMessage(data.response);
             });
+            
+            // メッセージ削除イベント
+            socket.on('message deleted', (data) => {
+                const messageDiv = document.querySelector(`[data-message-id="${data.messageId}"]`);
+                if (messageDiv) {
+                    messageDiv.style.transition = 'opacity 0.3s';
+                    messageDiv.style.opacity = '0';
+                    setTimeout(() => messageDiv.remove(), 300);
+                }
+            });
         }
         
         async function sendMessage() {
@@ -639,16 +649,24 @@
             const messagesDiv = document.getElementById('messages');
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message';
+            messageDiv.dataset.messageId = msg._id;
             
             const avatarHtml = msg.pictureUrl 
                 ? `<img src="${escapeHtml(msg.pictureUrl)}" class="message-avatar" alt="アバター">`
                 : '';
             
+            // 自分のメッセージの場合は削除ボタンを表示
+            const isMyMessage = currentUser && msg.userId === currentUser.userId;
+            const deleteButtonHtml = isMyMessage 
+                ? `<button onclick="deleteMessage('${msg._id}')" style="background: #ef4444; color: white; border: none; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 0.8rem; margin-left: auto;">🗑️ 削除</button>`
+                : '';
+            
             messageDiv.innerHTML = `
-                <div class="message-header">
+                <div class="message-header" style="display: flex; align-items: center; gap: 8px;">
                     ${avatarHtml}
                     <span class="username">${escapeHtml(msg.username)}</span>
                     <span class="timestamp">${msg.timestamp}</span>
+                    ${deleteButtonHtml}
                 </div>
                 <div class="message-text">${escapeHtml(msg.text).replace(/\n/g, '<br>')}</div>
             `;
@@ -756,6 +774,42 @@
             } finally {
                 bogsAdviceBtn.disabled = false;
                 bogsAdviceBtn.textContent = '🤖 BOGsに意見を聞く';
+            }
+        }
+        
+        // メッセージ削除
+        async function deleteMessage(messageId) {
+            if (!confirm('このメッセージを削除しますか？')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/chat-message/${messageId}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // 自分の画面から即座に削除
+                    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`);
+                    if (messageDiv) {
+                        messageDiv.style.transition = 'opacity 0.3s';
+                        messageDiv.style.opacity = '0';
+                        setTimeout(() => messageDiv.remove(), 300);
+                    }
+                    
+                    // 他のユーザーにも通知
+                    socket.emit('delete message', {
+                        messageId: messageId,
+                        channel: currentChannel
+                    });
+                } else {
+                    alert('削除に失敗しました: ' + result.error);
+                }
+            } catch (error) {
+                console.error('削除エラー:', error);
+                alert('削除に失敗しました');
             }
         }
         
