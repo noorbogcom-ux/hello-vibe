@@ -11,6 +11,11 @@ const userSchema = new mongoose.Schema({
     required: true
   },
   pictureUrl: String,
+  role: {
+    type: String,
+    enum: ['member', 'admin'],
+    default: 'member'
+  },
   createdAt: {
     type: Date,
     default: Date.now

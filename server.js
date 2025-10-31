@@ -157,10 +157,11 @@ app.get('/auth/line/callback', async (req, res) => {
       userId: user._id.toString(),
       lineUserId: user.lineUserId,
       displayName: user.displayName,
-      pictureUrl: user.pictureUrl
+      pictureUrl: user.pictureUrl,
+      role: user.role
     };
     
-    console.log('ログイン成功:', user.displayName);
+    console.log('ログイン成功:', user.displayName, `(${user.role})`);
     res.redirect('/');
     
   } catch (error) {
@@ -192,9 +193,15 @@ app.get('/api/chat-history', async (req, res) => {
     }
     
     const limit = parseInt(req.query.limit) || 50; // デフォルト50件
+    const channel = req.query.channel || 'general';
     
-    // 最新50件のメッセージを取得
-    const messages = await ChatMessage.find()
+    // アドミンチャンネルはアドミンのみアクセス可能
+    if (channel === 'admin' && req.session.user.role !== 'admin') {
+      return res.status(403).json({ error: 'アクセス権限がありません' });
+    }
+    
+    // 最新50件のメッセージを取得（チャンネルでフィルタ）
+    const messages = await ChatMessage.find({ channel })
       .sort({ timestamp: -1 })
       .limit(limit);
     
@@ -238,6 +245,75 @@ app.get('/api/conversation-history', async (req, res) => {
   } catch (error) {
     console.error('AI会話履歴取得エラー:', error);
     res.status(500).json({ error: 'AI会話履歴の取得に失敗しました' });
+  }
+});
+
+// BOGsに意見を聞くAPI（アドミン専用）
+app.post('/api/bogs-advice', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.status(401).json({ error: 'ログインが必要です' });
+    }
+    
+    if (req.session.user.role !== 'admin') {
+      return res.status(403).json({ error: 'アドミン権限が必要です' });
+    }
+    
+    const { messageCount = 30 } = req.body;
+    
+    // アドミンチャットの履歴を取得
+    const recentMessages = await ChatMessage.find({ channel: 'admin' })
+      .sort({ timestamp: -1 })
+      .limit(messageCount);
+    
+    if (recentMessages.length === 0) {
+      return res.json({ 
+        success: true, 
+        response: 'まだアドミンチャットの履歴がありません。議論を開始してください。' 
+      });
+    }
+    
+    const messages = recentMessages.reverse();
+    
+    // チャット履歴をテキスト化
+    const chatHistory = messages.map(msg => 
+      `[${new Date(msg.timestamp).toLocaleTimeString('ja-JP')}] ${msg.username}: ${msg.text}`
+    ).join('\n');
+    
+    // AIに戦略的アドバイスを求める
+    const systemPrompt = `あなたはBOGCOM社の戦略アドバイザーです。役員会議の内容を分析し、以下の観点から提言してください：
+1. 意思決定のポイント
+2. リスクと機会
+3. 次のアクション提案
+4. 注意すべき点
+
+簡潔かつ具体的に、役員が判断しやすい形でアドバイスしてください。`;
+    
+    const userPrompt = `以下の役員会議の内容を分析し、戦略的アドバイスをお願いします：\n\n${chatHistory}`;
+    
+    // OpenAI APIを呼び出し
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      temperature: 0.8,
+      max_tokens: 1500
+    });
+    
+    const aiResponse = completion.choices[0].message.content;
+    
+    console.log(`BOGsアドバイス: ${aiResponse.substring(0, 100)}...`);
+    
+    res.json({
+      success: true,
+      response: aiResponse
+    });
+    
+  } catch (error) {
+    console.error('BOGsアドバイスエラー:', error);
+    res.status(500).json({ error: 'アドバイス生成に失敗しました' });
   }
 });
 
@@ -553,13 +629,22 @@ io.on('connection', (socket) => {
       return;
     }
     
-    console.log('メッセージ:', msg.text, 'from', session.user.displayName);
+    const channel = msg.channel || 'general';
+    
+    // アドミンチャンネルはアドミンのみ送信可能
+    if (channel === 'admin' && session.user.role !== 'admin') {
+      socket.emit('error', 'アクセス権限がありません');
+      return;
+    }
+    
+    console.log(`[${channel}] メッセージ:`, msg.text, 'from', session.user.displayName);
     
     const messageData = {
       text: msg.text,
       username: session.user.displayName,
       pictureUrl: session.user.pictureUrl,
-      timestamp: new Date().toLocaleTimeString('ja-JP')
+      timestamp: new Date().toLocaleTimeString('ja-JP'),
+      channel: channel
     };
     
     // MongoDBに保存
@@ -568,15 +653,27 @@ io.on('connection', (socket) => {
         userId: session.user.userId,
         username: session.user.displayName,
         pictureUrl: session.user.pictureUrl,
-        text: msg.text
+        text: msg.text,
+        channel: channel
       });
       await chatMessage.save();
-      console.log('チャットメッセージをDBに保存しました');
+      console.log(`[${channel}] チャットメッセージをDBに保存しました`);
     } catch (error) {
       console.error('チャットメッセージ保存エラー:', error);
     }
     
-    io.emit('chat message', messageData);
+    // チャンネル別にブロードキャスト
+    if (channel === 'admin') {
+      // アドミンチャンネルはアドミンのみに配信
+      io.sockets.sockets.forEach((s) => {
+        if (s.request.session && s.request.session.user && s.request.session.user.role === 'admin') {
+          s.emit('chat message', messageData);
+        }
+      });
+    } else {
+      // 一般チャンネルは全員に配信
+      io.emit('chat message', messageData);
+    }
   });
   
   // AIファシリテーターの応答をブロードキャスト

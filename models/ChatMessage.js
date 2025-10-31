@@ -17,6 +17,12 @@ const chatMessageSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  channel: {
+    type: String,
+    enum: ['general', 'admin'],
+    default: 'general',
+    index: true
+  },
   timestamp: {
     type: Date,
     default: Date.now,
@@ -26,6 +32,7 @@ const chatMessageSchema = new mongoose.Schema({
 
 // 最新のメッセージから取得するためのインデックス
 chatMessageSchema.index({ timestamp: -1 });
+chatMessageSchema.index({ channel: 1, timestamp: -1 });
 
 module.exports = mongoose.model('ChatMessage', chatMessageSchema);
 

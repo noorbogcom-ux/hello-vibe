@@ -369,7 +369,7 @@
         <div id="chatView" class="hidden">
             <div class="header">
                 <div class="header-top">
-                    <h1>💬 BOGs チャット</h1>
+                    <h1 id="chatTitle">💬 オープンチャット</h1>
                     <div class="nav-buttons">
                         <a href="/" class="nav-btn active">チャット</a>
                         <a href="/chat.html" class="nav-btn">🤖 AI</a>
@@ -380,6 +380,18 @@
                     <img id="userAvatar" class="user-avatar" src="" alt="アバター">
                     <span id="userName"></span>
                     <span class="user-count">・オンライン: <span id="userCount">0</span>人</span>
+                </div>
+                <!-- チャンネル切り替え -->
+                <div class="mode-toggle" style="margin-top: 15px; display: flex; gap: 10px;">
+                    <button class="mode-btn active" onclick="switchChannel('general')" style="flex: 1; padding: 10px; background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.3); color: white; border-radius: 10px; cursor: pointer; font-weight: 600;">
+                        💬 オープンチャット
+                    </button>
+                    <button id="adminChannelBtn" class="mode-btn" onclick="switchChannel('admin')" style="flex: 1; padding: 10px; background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.3); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; display: none;">
+                        👔 アドミンチャット
+                    </button>
+                    <button id="bogsAdviceBtn" onclick="askBogsAdvice()" style="padding: 10px 20px; background: #8b5cf6; border: none; color: white; border-radius: 10px; cursor: pointer; font-weight: 600; display: none;">
+                        🤖 BOGsに意見を聞く
+                    </button>
                 </div>
             </div>
             
@@ -409,6 +421,7 @@
         let socket;
         let currentUser = null;
         let audioContext = null;
+        let currentChannel = 'general'; // 現在のチャンネル
 
         // 効果音を生成・再生
         function playSoundEffect(type) {
@@ -464,9 +477,9 @@
         }
 
         // チャット履歴をロード
-        async function loadChatHistory() {
+        async function loadChatHistory(channel = 'general') {
             try {
-                const response = await fetch('/api/chat-history?limit=50');
+                const response = await fetch(`/api/chat-history?limit=50&channel=${channel}`);
                 if (response.ok) {
                     const data = await response.json();
                     const messagesDiv = document.getElementById('messages');
@@ -476,6 +489,7 @@
                     
                     if (data.messages.length === 0) {
                         // 履歴がない場合はウェルカムメッセージを表示
+                        const channelName = channel === 'admin' ? 'アドミンチャット' : 'オープンチャット';
                         messagesDiv.innerHTML = `
                             <div class="message">
                                 <div class="message-header">
@@ -483,7 +497,7 @@
                                     <span class="timestamp">--:--:--</span>
                                 </div>
                                 <div class="message-text">
-                                    BOGsチャットへようこそ！リアルタイムで他のメンバーとコミュニケーションできます 🎉
+                                    ${channelName}へようこそ！${channel === 'admin' ? '役員専用の議論スペースです 👔' : 'リアルタイムで他のメンバーとコミュニケーションできます 💬'}
                                 </div>
                             </div>
                         `;
@@ -494,9 +508,12 @@
                         });
                     }
                     
-                    console.log(`チャット履歴 ${data.messages.length}件 を読み込みました`);
+                    console.log(`[${channel}] チャット履歴 ${data.messages.length}件 を読み込みました`);
                 } else {
                     console.error('チャット履歴の取得に失敗しました');
+                    if (response.status === 403) {
+                        alert('アクセス権限がありません');
+                    }
                 }
             } catch (error) {
                 console.error('チャット履歴読み込みエラー:', error);
@@ -513,6 +530,12 @@
             document.getElementById('chatView').classList.remove('hidden');
             document.getElementById('userName').textContent = currentUser.displayName;
             document.getElementById('userAvatar').src = currentUser.pictureUrl;
+            
+            // アドミンの場合はアドミンチャンネルボタンを表示
+            if (currentUser.role === 'admin') {
+                document.getElementById('adminChannelBtn').style.display = 'block';
+                console.log('アドミン権限を検出しました');
+            }
         }
 
         function initSocket() {
@@ -523,9 +546,12 @@
             });
             
             socket.on('chat message', (msg) => {
-                // 自分のメッセージでない場合のみ受信音を鳴らす
-                const isMyMessage = currentUser && msg.username === currentUser.displayName;
-                addMessage(msg, !isMyMessage);
+                // 現在のチャンネルのメッセージのみ表示
+                if (msg.channel === currentChannel) {
+                    // 自分のメッセージでない場合のみ受信音を鳴らす
+                    const isMyMessage = currentUser && msg.username === currentUser.displayName;
+                    addMessage(msg, !isMyMessage);
+                }
             });
 
             socket.on('error', (msg) => {
@@ -549,7 +575,8 @@
             playSoundEffect('send');
             
             socket.emit('chat message', {
-                text: text
+                text: text,
+                channel: currentChannel
             });
             
             messageInput.value = '';
@@ -652,6 +679,82 @@
             
             messagesDiv.appendChild(messageDiv);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        // チャンネル切り替え
+        async function switchChannel(channel) {
+            currentChannel = channel;
+            
+            // ボタンのアクティブ状態を切り替え
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.remove('active');
+                btn.style.background = 'rgba(255,255,255,0.2)';
+                btn.style.color = 'white';
+            });
+            event.target.classList.add('active');
+            event.target.style.background = 'white';
+            event.target.style.color = '#1e3a8a';
+            
+            // タイトルを変更
+            const title = channel === 'admin' ? '👔 アドミンチャット' : '💬 オープンチャット';
+            document.getElementById('chatTitle').textContent = title;
+            
+            // BOGsに意見を聞くボタンの表示切り替え
+            const bogsAdviceBtn = document.getElementById('bogsAdviceBtn');
+            if (channel === 'admin') {
+                bogsAdviceBtn.style.display = 'block';
+            } else {
+                bogsAdviceBtn.style.display = 'none';
+            }
+            
+            // チャット履歴を再ロード
+            await loadChatHistory(channel);
+            
+            console.log(`チャンネルを ${channel} に切り替えました`);
+        }
+        
+        // BOGsに意見を聞く
+        async function askBogsAdvice() {
+            const bogsAdviceBtn = document.getElementById('bogsAdviceBtn');
+            bogsAdviceBtn.disabled = true;
+            bogsAdviceBtn.textContent = '🤔 考え中...';
+            
+            // ローディング表示
+            addFacilitatorMessage('🤔 役員会議の内容を分析中...');
+            
+            try {
+                const response = await fetch('/api/bogs-advice', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        messageCount: 30
+                    })
+                });
+                
+                const result = await response.json();
+                
+                // ローディングメッセージを削除
+                const messages = document.getElementById('messages');
+                const lastMessage = messages.lastElementChild;
+                if (lastMessage && lastMessage.textContent.includes('分析中')) {
+                    lastMessage.remove();
+                }
+                
+                if (response.ok) {
+                    playSoundEffect('receive');
+                    addFacilitatorMessage(`📊 BOGsの戦略アドバイス:\n\n${result.response}`);
+                } else {
+                    addFacilitatorMessage('エラー: ' + result.error);
+                }
+            } catch (error) {
+                console.error('BOGsアドバイスエラー:', error);
+                addFacilitatorMessage('エラーが発生しました。');
+            } finally {
+                bogsAdviceBtn.disabled = false;
+                bogsAdviceBtn.textContent = '🤖 BOGsに意見を聞く';
+            }
         }
         
         function escapeHtml(text) {
