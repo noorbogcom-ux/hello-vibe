@@ -17,6 +17,7 @@ const OpenAI = require('openai');
 const User = require('./models/User');
 const Conversation = require('./models/Conversation');
 const Document = require('./models/Document');
+const ChatMessage = require('./models/ChatMessage');
 
 const app = express();
 const server = http.createServer(app);
@@ -180,6 +181,36 @@ app.get('/api/user', (req, res) => {
     res.json(req.session.user);
   } else {
     res.status(401).json({ error: 'Not authenticated' });
+  }
+});
+
+// チャット履歴取得API
+app.get('/api/chat-history', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.status(401).json({ error: 'ログインが必要です' });
+    }
+    
+    const limit = parseInt(req.query.limit) || 50; // デフォルト50件
+    
+    // 最新50件のメッセージを取得
+    const messages = await ChatMessage.find()
+      .sort({ timestamp: -1 })
+      .limit(limit);
+    
+    // 古い順に並び替えて返す
+    const sortedMessages = messages.reverse().map(msg => ({
+      text: msg.text,
+      username: msg.username,
+      pictureUrl: msg.pictureUrl,
+      timestamp: new Date(msg.timestamp).toLocaleTimeString('ja-JP')
+    }));
+    
+    res.json({ messages: sortedMessages });
+    
+  } catch (error) {
+    console.error('チャット履歴取得エラー:', error);
+    res.status(500).json({ error: 'チャット履歴の取得に失敗しました' });
   }
 });
 
@@ -408,7 +439,7 @@ io.on('connection', (socket) => {
   io.emit('user count', userCount);
   
   // チャットメッセージを受信
-  socket.on('chat message', (msg) => {
+  socket.on('chat message', async (msg) => {
     if (!session.user) {
       socket.emit('error', 'ログインが必要です');
       return;
@@ -416,12 +447,28 @@ io.on('connection', (socket) => {
     
     console.log('メッセージ:', msg.text, 'from', session.user.displayName);
     
-    io.emit('chat message', {
+    const messageData = {
       text: msg.text,
       username: session.user.displayName,
       pictureUrl: session.user.pictureUrl,
       timestamp: new Date().toLocaleTimeString('ja-JP')
-    });
+    };
+    
+    // MongoDBに保存
+    try {
+      const chatMessage = new ChatMessage({
+        userId: session.user.userId,
+        username: session.user.displayName,
+        pictureUrl: session.user.pictureUrl,
+        text: msg.text
+      });
+      await chatMessage.save();
+      console.log('チャットメッセージをDBに保存しました');
+    } catch (error) {
+      console.error('チャットメッセージ保存エラー:', error);
+    }
+    
+    io.emit('chat message', messageData);
   });
   
   socket.on('disconnect', () => {
