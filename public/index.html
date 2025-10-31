@@ -658,7 +658,7 @@
             // 自分のメッセージの場合は削除ボタンを表示
             const isMyMessage = currentUser && msg.userId === currentUser.userId;
             const deleteButtonHtml = isMyMessage 
-                ? `<button onclick="deleteMessage('${msg._id}')" style="background: #ef4444; color: white; border: none; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 0.8rem; margin-left: auto;">🗑️ 削除</button>`
+                ? `<button onclick="deleteMessage('${msg._id}')" style="background: #ef4444; color: white; border: none; border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 0.7rem; margin-left: auto;">🗑️</button>`
                 : '';
             
             messageDiv.innerHTML = `
