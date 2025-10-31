@@ -12,6 +12,7 @@ const fs = require('fs').promises;
 const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
 const OpenAI = require('openai');
+const Encoding = require('encoding-japanese');
 
 // モデルのインポート
 const User = require('./models/User');
@@ -479,7 +480,16 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       const result = await mammoth.extractRawText({ buffer: fileBuffer });
       extractedText = result.value;
     } else if (file.mimetype === 'text/plain') {
-      extractedText = fileBuffer.toString('utf-8');
+      // エンコーディングを自動検出して変換
+      const detectedEncoding = Encoding.detect(fileBuffer);
+      console.log(`検出されたエンコーディング: ${detectedEncoding}`);
+      
+      // UTF-8に変換
+      const unicodeArray = Encoding.convert(fileBuffer, {
+        to: 'UNICODE',
+        from: detectedEncoding
+      });
+      extractedText = Encoding.codeToString(unicodeArray);
     }
     
     // MongoDBに保存
