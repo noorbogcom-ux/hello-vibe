@@ -531,9 +531,15 @@
             socket.on('error', (msg) => {
                 alert(msg);
             });
+            
+            // AIファシリテーター応答
+            socket.on('facilitator response', (data) => {
+                playSoundEffect('receive');
+                addFacilitatorMessage(data.response);
+            });
         }
         
-        function sendMessage() {
+        async function sendMessage() {
             const messageInput = document.getElementById('messageInput');
             const text = messageInput.value.trim();
             
@@ -548,6 +554,56 @@
             
             messageInput.value = '';
             messageInput.style.height = 'auto';
+            
+            // @BOGsメンションをチェック
+            if (text.includes('@BOGs') || text.includes('@bogs')) {
+                // コマンドを抽出
+                let command = text.replace(/@BOGs|@bogs/gi, '').trim();
+                
+                if (command === '') {
+                    command = '要約'; // デフォルトは要約
+                }
+                
+                // ローディング表示
+                addFacilitatorMessage('🤔 考え中...');
+                
+                try {
+                    const response = await fetch('/api/facilitator', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            command: command,
+                            messageCount: 30
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    // ローディングメッセージを削除
+                    const messages = document.getElementById('messages');
+                    const lastMessage = messages.lastElementChild;
+                    if (lastMessage && lastMessage.textContent.includes('考え中')) {
+                        lastMessage.remove();
+                    }
+                    
+                    if (response.ok) {
+                        playSoundEffect('receive');
+                        addFacilitatorMessage(result.response);
+                        
+                        // 他のユーザーにも通知
+                        socket.emit('facilitator broadcast', {
+                            response: result.response
+                        });
+                    } else {
+                        addFacilitatorMessage('エラー: ' + result.error);
+                    }
+                } catch (error) {
+                    console.error('ファシリテーターエラー:', error);
+                    addFacilitatorMessage('エラーが発生しました。');
+                }
+            }
         }
         
         function addMessage(msg, playSound = false) {
@@ -575,6 +631,27 @@
             if (playSound) {
                 playSoundEffect('receive');
             }
+        }
+        
+        function addFacilitatorMessage(text) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            messageDiv.style.borderLeft = '4px solid #8b5cf6';
+            messageDiv.style.backgroundColor = '#f3e8ff';
+            
+            const now = new Date().toLocaleTimeString('ja-JP');
+            
+            messageDiv.innerHTML = `
+                <div class="message-header">
+                    <span class="username" style="color: #8b5cf6; font-weight: 700;">🤖 BOGs AI</span>
+                    <span class="timestamp">${now}</span>
+                </div>
+                <div class="message-text">${escapeHtml(text).replace(/\n/g, '<br>')}</div>
+            `;
+            
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
         
         function escapeHtml(text) {

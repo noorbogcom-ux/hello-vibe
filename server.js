@@ -241,6 +241,87 @@ app.get('/api/conversation-history', async (req, res) => {
   }
 });
 
+// AIファシリテーター API
+app.post('/api/facilitator', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.status(401).json({ error: 'ログインが必要です' });
+    }
+    
+    const { command, messageCount = 20 } = req.body;
+    
+    // 最近のチャットメッセージを取得
+    const recentMessages = await ChatMessage.find()
+      .sort({ timestamp: -1 })
+      .limit(messageCount);
+    
+    const messages = recentMessages.reverse();
+    
+    if (messages.length === 0) {
+      return res.json({ 
+        success: true, 
+        response: 'まだチャット履歴がありません。' 
+      });
+    }
+    
+    // チャット履歴をテキスト化
+    const chatHistory = messages.map(msg => 
+      `[${new Date(msg.timestamp).toLocaleTimeString('ja-JP')}] ${msg.username}: ${msg.text}`
+    ).join('\n');
+    
+    let systemPrompt = '';
+    let userPrompt = '';
+    
+    // コマンドに応じてプロンプトを変更
+    if (command === 'summarize' || command === '要約') {
+      systemPrompt = 'あなたは会議のファシリテーターです。チャットの会話を簡潔に要約してください。';
+      userPrompt = `以下のチャット履歴を要約してください：\n\n${chatHistory}`;
+      
+    } else if (command === 'minutes' || command === '議事録') {
+      systemPrompt = 'あなたは議事録作成の専門家です。会話から決定事項とTODOを抽出してください。';
+      userPrompt = `以下のチャット履歴から、【決定事項】と【TODO】を抽出して整理してください：\n\n${chatHistory}`;
+      
+    } else if (command === 'organize' || command === '整理') {
+      systemPrompt = 'あなたは議論を整理する専門家です。会話の論点を整理し、次のアクションを提案してください。';
+      userPrompt = `以下のチャット履歴の議論を整理し、次に何をすべきか提案してください：\n\n${chatHistory}`;
+      
+    } else if (command.startsWith('search:') || command.startsWith('検索:')) {
+      const keyword = command.replace(/^(search:|検索:)/, '').trim();
+      systemPrompt = 'あなたは情報検索の専門家です。キーワードに関連する会話を見つけて説明してください。';
+      userPrompt = `以下のチャット履歴から「${keyword}」に関連する内容を見つけて説明してください：\n\n${chatHistory}`;
+      
+    } else {
+      // デフォルト: 質問に答える
+      systemPrompt = 'あなたはチームのAIアシスタントです。チャット履歴を参照して質問に答えてください。';
+      userPrompt = `以下のチャット履歴を参照して質問に答えてください：\n\n${chatHistory}\n\n質問: ${command}`;
+    }
+    
+    // OpenAI APIを呼び出し
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 1000
+    });
+    
+    const aiResponse = completion.choices[0].message.content;
+    
+    console.log(`AIファシリテーター応答: ${aiResponse.substring(0, 100)}...`);
+    
+    res.json({
+      success: true,
+      response: aiResponse
+    });
+    
+  } catch (error) {
+    console.error('AIファシリテーターエラー:', error);
+    res.status(500).json({ error: 'AIファシリテーターの処理に失敗しました' });
+  }
+});
+
 // ファイルアップロードAPI
 app.post('/api/upload', upload.single('file'), async (req, res) => {
   try {
@@ -496,6 +577,20 @@ io.on('connection', (socket) => {
     }
     
     io.emit('chat message', messageData);
+  });
+  
+  // AIファシリテーターの応答をブロードキャスト
+  socket.on('facilitator broadcast', (data) => {
+    if (!session.user) {
+      return;
+    }
+    
+    console.log('AIファシリテーター応答をブロードキャスト');
+    
+    // 送信者以外の全員に配信
+    socket.broadcast.emit('facilitator response', {
+      response: data.response
+    });
   });
   
   socket.on('disconnect', () => {
