@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ハロー！バイブ！チャット</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            max-width: 800px;
+            width: 100%;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .user-count {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .chat-container {
+            height: 400px;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .message-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .username {
+            font-weight: bold;
+            color: #667eea;
+            margin-right: 10px;
+        }
+
+        .timestamp {
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .message-text {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            word-wrap: break-word;
+        }
+
+        .input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            .chat-container {
+                height: 300px;
+            }
+            .input-row {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💬 ハロー！バイブ！チャット</h1>
+            <div class="user-count">オンライン: <span id="userCount">0</span>人</div>
+        </div>
+        
+        <div class="chat-container" id="messages">
+            <div class="message">
+                <div class="message-header">
+                    <span class="username">システム</span>
+                    <span class="timestamp">--:--:--</span>
+                </div>
+                <div class="message-text">
+                    チャットへようこそ！🎉 メッセージを送信してみてください！
+                </div>
+            </div>
+        </div>
+        
+        <div class="input-container">
+            <div class="input-row">
+                <input type="text" id="username" placeholder="ニックネーム" maxlength="20">
+            </div>
+            <div class="input-row">
+                <input type="text" id="messageInput" placeholder="メッセージを入力..." maxlength="500">
+                <button onclick="sendMessage()">送信</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        
+        // ユーザー数の更新
+        socket.on('user count', (count) => {
+            document.getElementById('userCount').textContent = count;
+        });
+        
+        // メッセージを受信
+        socket.on('chat message', (msg) => {
+            addMessage(msg);
+        });
+        
+        // メッセージを送信
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const usernameInput = document.getElementById('username');
+            const text = messageInput.value.trim();
+            
+            if (text === '') return;
+            
+            const username = usernameInput.value.trim() || '匿名';
+            
+            socket.emit('chat message', {
+                text: text,
+                username: username
+            });
+            
+            messageInput.value = '';
+        }
+        
+        // メッセージを画面に追加
+        function addMessage(msg) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            
+            messageDiv.innerHTML = `
+                <div class="message-header">
+                    <span class="username">${escapeHtml(msg.username)}</span>
+                    <span class="timestamp">${msg.timestamp}</span>
+                </div>
+                <div class="message-text">${escapeHtml(msg.text)}</div>
+            `;
+            
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        // HTMLエスケープ（XSS対策）
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Enterキーで送信
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        
+        document.getElementById('username').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('messageInput').focus();
+            }
+        });
+    </script>
+</body>
+</html>

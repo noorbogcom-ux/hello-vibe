@@ -20,8 +20,9 @@ AWSCLI.txt
 *.log
 npm-debug.log*
 
-# Dependencies (今後使用する可能性)
+# Dependencies
 node_modules/
+package-lock.json
 
 # Environment variables
 .env

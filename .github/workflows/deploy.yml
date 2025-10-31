@@ -25,13 +25,16 @@ jobs:
           HOSTNAME: ${{ secrets.EC2_HOST }}
           USER_NAME: ubuntu
         run: |
-          # EC2にファイルをコピー
-          scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa index.html ${USER_NAME}@${HOSTNAME}:/tmp/
+          # プロジェクトファイルをEC2にコピー
+          scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa -r public server.js package.json ${USER_NAME}@${HOSTNAME}:/home/ubuntu/hello-vibe/
           
-          # Nginxのドキュメントルートに移動
+          # サーバーをセットアップして起動
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa ${USER_NAME}@${HOSTNAME} '
-            sudo cp /tmp/index.html /var/www/html/
-            sudo systemctl reload nginx
+            cd /home/ubuntu/hello-vibe
+            npm install --production
+            pm2 delete hello-vibe || true
+            pm2 start server.js --name hello-vibe
+            pm2 save
             echo "✅ デプロイ完了！"
           '
 
