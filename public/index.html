@@ -211,6 +211,72 @@
             padding: 20px;
             background: white;
             border-top: 1px solid var(--border-color);
+            position: relative;
+        }
+        
+        /* @メンションドロップダウン */
+        .mention-dropdown {
+            position: absolute;
+            bottom: 100%;
+            left: 20px;
+            right: 20px;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+            z-index: 1000;
+        }
+        
+        .mention-dropdown.show {
+            display: block;
+        }
+        
+        .mention-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background 0.2s;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .mention-item:hover {
+            background: var(--bg-light);
+        }
+        
+        .mention-item.selected {
+            background: #e0e7ff;
+        }
+        
+        .mention-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+        }
+        
+        .mention-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+        
+        .mention-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .mention-command {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
         }
 
         .input-row {
@@ -410,8 +476,11 @@
             </div>
             
             <div class="input-container">
+                <!-- @メンションドロップダウン -->
+                <div id="mentionDropdown" class="mention-dropdown"></div>
+                
                 <div class="input-row">
-                    <textarea id="messageInput" placeholder="メッセージを入力... (Shift+Enterで送信)" rows="1"></textarea>
+                    <textarea id="messageInput" placeholder="メッセージを入力... (Shift+Enterで送信 / @でメンション)" rows="1"></textarea>
                     <button onclick="sendMessage()">送信</button>
                 </div>
             </div>
@@ -547,6 +616,13 @@
                 document.getElementById('userCount').textContent = count;
             });
             
+            // オンラインユーザーリストを受信（グローバルに保存）
+            window.onlineUsers = [];
+            socket.on('online users', (users) => {
+                window.onlineUsers = users;
+                console.log('オンラインユーザー:', window.onlineUsers);
+            });
+            
             socket.on('chat message', (msg) => {
                 // 現在のチャンネルのメッセージのみ表示
                 if (msg.channel === currentChannel) {
@@ -655,18 +731,24 @@
                 ? `<img src="${escapeHtml(msg.pictureUrl)}" class="message-avatar" alt="アバター">`
                 : '';
             
+            // コピーボタンは全メッセージに表示
+            const copyButtonHtml = `<button onclick="copyMessage('${escapeHtml(msg.text).replace(/'/g, '\\\'')}')" title="コピー" style="background: #3b82f6; color: white; border: none; border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 0.7rem;">📋</button>`;
+            
             // 自分のメッセージの場合は削除ボタンを表示
             const isMyMessage = currentUser && msg.userId === currentUser.userId;
             const deleteButtonHtml = isMyMessage 
-                ? `<button onclick="deleteMessage('${msg._id}')" style="background: #ef4444; color: white; border: none; border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 0.7rem; margin-left: auto;">🗑️</button>`
+                ? `<button onclick="deleteMessage('${msg._id}')" title="削除" style="background: #ef4444; color: white; border: none; border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 0.7rem;">🗑️</button>`
                 : '';
             
             messageDiv.innerHTML = `
                 <div class="message-header" style="display: flex; align-items: center; gap: 8px;">
                     ${avatarHtml}
                     <span class="username">${escapeHtml(msg.username)}</span>
-                    <span class="timestamp">${msg.timestamp}</span>
-                    ${deleteButtonHtml}
+                    <span class="timestamp">${formatTime(msg.timestamp)}</span>
+                    <div style="margin-left: auto; display: flex; gap: 4px;">
+                        ${copyButtonHtml}
+                        ${deleteButtonHtml}
+                    </div>
                 </div>
                 <div class="message-text">${escapeHtml(msg.text).replace(/\n/g, '<br>')}</div>
             `;
@@ -684,17 +766,21 @@
             const messagesDiv = document.getElementById('messages');
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message';
-            messageDiv.style.borderLeft = '4px solid #8b5cf6';
-            messageDiv.style.backgroundColor = '#f3e8ff';
             
-            const now = new Date().toLocaleTimeString('ja-JP');
+            const now = formatTime(new Date());
+            const copyButtonHtml = `<button onclick="copyMessage('${escapeHtml(text).replace(/'/g, '\\\'').replace(/\n/g, '\\n')}')" title="コピー" style="background: #3b82f6; color: white; border: none; border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 0.7rem; margin-left: auto;">📋</button>`;
+            
+            // BOGsのアバター（紫のAIアイコン）
+            const bogsAvatarHtml = `<div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #8b5cf6, #a78bfa); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">🤖</div>`;
             
             messageDiv.innerHTML = `
-                <div class="message-header">
-                    <span class="username" style="color: #8b5cf6; font-weight: 700;">🤖 BOGs AI</span>
+                <div class="message-header" style="display: flex; align-items: center; gap: 8px;">
+                    ${bogsAvatarHtml}
+                    <span class="username" style="color: #8b5cf6; font-weight: 700;">BOGs AI</span>
                     <span class="timestamp">${now}</span>
+                    ${copyButtonHtml}
                 </div>
-                <div class="message-text">${escapeHtml(text).replace(/\n/g, '<br>')}</div>
+                <div class="message-text" style="border-left: 3px solid #8b5cf6;">${escapeHtml(text).replace(/\n/g, '<br>')}</div>
             `;
             
             messagesDiv.appendChild(messageDiv);
@@ -813,10 +899,59 @@
             }
         }
         
+        // メッセージをクリップボードにコピー
+        function copyMessage(text) {
+            // HTMLエンティティをデコード
+            const textarea = document.createElement('textarea');
+            textarea.innerHTML = text;
+            const decodedText = textarea.value;
+            
+            navigator.clipboard.writeText(decodedText).then(() => {
+                // コピー成功の視覚的フィードバック
+                const notification = document.createElement('div');
+                notification.textContent = '✅ コピーしました！';
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #10b981;
+                    color: white;
+                    padding: 12px 20px;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                    z-index: 10000;
+                    animation: slideIn 0.3s ease;
+                `;
+                document.body.appendChild(notification);
+                setTimeout(() => {
+                    notification.style.transition = 'opacity 0.3s';
+                    notification.style.opacity = '0';
+                    setTimeout(() => notification.remove(), 300);
+                }, 2000);
+            }).catch(err => {
+                console.error('コピーエラー:', err);
+                alert('コピーに失敗しました');
+            });
+        }
+        
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+        
+        // 時刻フォーマット関数
+        function formatTime(timestamp) {
+            try {
+                const date = new Date(timestamp);
+                // 有効な日付かチェック
+                if (isNaN(date.getTime())) {
+                    return '--:--';
+                }
+                return date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+            } catch (e) {
+                return '--:--';
+            }
         }
         
         // テキストエリアの自動リサイズ
@@ -825,8 +960,182 @@
             textarea.style.height = Math.min(textarea.scrollHeight, 150) + 'px';
         }
         
+        // @メンション機能
+        let mentionDropdown = null;
+        let selectedMentionIndex = 0;
+        let mentionItems = [];
+        
+        function initMentionFeature() {
+            const messageInput = document.getElementById('messageInput');
+            mentionDropdown = document.getElementById('mentionDropdown');
+            
+            messageInput.addEventListener('input', handleMentionInput);
+            messageInput.addEventListener('keydown', handleMentionKeydown);
+            
+            // ドロップダウン外をクリックしたら閉じる
+            document.addEventListener('click', (e) => {
+                if (!messageInput.contains(e.target) && !mentionDropdown.contains(e.target)) {
+                    hideMentionDropdown();
+                }
+            });
+        }
+        
+        function handleMentionInput(e) {
+            const text = e.target.value;
+            const cursorPos = e.target.selectionStart;
+            
+            // カーソル位置の前の文字を取得
+            const textBeforeCursor = text.substring(0, cursorPos);
+            const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+            
+            if (lastAtIndex !== -1) {
+                // @の後の文字列を取得
+                const searchText = textBeforeCursor.substring(lastAtIndex + 1);
+                
+                // @の直後か、スペースの後の@の場合のみ表示
+                const charBeforeAt = lastAtIndex > 0 ? textBeforeCursor[lastAtIndex - 1] : ' ';
+                if (charBeforeAt === ' ' || charBeforeAt === '\n' || lastAtIndex === 0) {
+                    showMentionDropdown(searchText);
+                } else {
+                    hideMentionDropdown();
+                }
+            } else {
+                hideMentionDropdown();
+            }
+        }
+        
+        function showMentionDropdown(searchText) {
+            mentionItems = getMentionItems(searchText);
+            
+            if (mentionItems.length === 0) {
+                hideMentionDropdown();
+                return;
+            }
+            
+            selectedMentionIndex = 0;
+            renderMentionDropdown();
+            mentionDropdown.classList.add('show');
+        }
+        
+        function hideMentionDropdown() {
+            mentionDropdown.classList.remove('show');
+            mentionItems = [];
+        }
+        
+        function getMentionItems(searchText) {
+            const items = [];
+            const search = searchText.toLowerCase();
+            
+            // @BOGs とコマンド
+            const bogsItems = [
+                { type: 'bogs', text: '@BOGs', description: 'AIファシリテーター' },
+                { type: 'command', text: '@BOGs 要約', description: '最近の会話を要約' },
+                { type: 'command', text: '@BOGs 議事録', description: '決定事項・TODOを抽出' },
+                { type: 'command', text: '@BOGs 検索: ', description: '過去のチャットを検索' }
+            ];
+            
+            bogsItems.forEach(item => {
+                if (item.text.toLowerCase().includes(search) || search === '') {
+                    items.push(item);
+                }
+            });
+            
+            // オンラインユーザー
+            if (window.onlineUsers) {
+                window.onlineUsers.forEach(user => {
+                    const mentionText = `@${user.displayName}`;
+                    if (mentionText.toLowerCase().includes(search) || search === '') {
+                        items.push({
+                            type: 'user',
+                            text: mentionText,
+                            description: user.role === 'admin' ? '👔 アドミン' : 'メンバー',
+                            pictureUrl: user.pictureUrl
+                        });
+                    }
+                });
+            }
+            
+            return items;
+        }
+        
+        function renderMentionDropdown() {
+            mentionDropdown.innerHTML = mentionItems.map((item, index) => {
+                const isSelected = index === selectedMentionIndex ? 'selected' : '';
+                
+                let avatar = '';
+                if (item.type === 'bogs' || item.type === 'command') {
+                    avatar = '<div class="mention-icon">🤖</div>';
+                } else if (item.pictureUrl) {
+                    avatar = `<img src="${item.pictureUrl}" class="mention-avatar" alt="avatar">`;
+                } else {
+                    avatar = '<div class="mention-icon">👤</div>';
+                }
+                
+                return `
+                    <div class="mention-item ${isSelected}" data-index="${index}" onclick="selectMention(${index})">
+                        ${avatar}
+                        <div>
+                            <div class="mention-name">${escapeHtml(item.text)}</div>
+                            <div class="mention-command">${escapeHtml(item.description)}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function handleMentionKeydown(e) {
+            if (!mentionDropdown.classList.contains('show')) return;
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedMentionIndex = (selectedMentionIndex + 1) % mentionItems.length;
+                renderMentionDropdown();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedMentionIndex = (selectedMentionIndex - 1 + mentionItems.length) % mentionItems.length;
+                renderMentionDropdown();
+            } else if (e.key === 'Tab' || e.key === 'Enter') {
+                if (mentionItems.length > 0) {
+                    e.preventDefault();
+                    selectMention(selectedMentionIndex);
+                }
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                hideMentionDropdown();
+            }
+        }
+        
+        function selectMention(index) {
+            const item = mentionItems[index];
+            const messageInput = document.getElementById('messageInput');
+            const text = messageInput.value;
+            const cursorPos = messageInput.selectionStart;
+            
+            // @の位置を見つける
+            const textBeforeCursor = text.substring(0, cursorPos);
+            const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+            
+            // @から現在のカーソル位置までを置き換え
+            const textBefore = text.substring(0, lastAtIndex);
+            const textAfter = text.substring(cursorPos);
+            const newText = textBefore + item.text + ' ' + textAfter;
+            
+            messageInput.value = newText;
+            
+            // カーソル位置を設定
+            const newCursorPos = textBefore.length + item.text.length + 1;
+            messageInput.setSelectionRange(newCursorPos, newCursorPos);
+            
+            hideMentionDropdown();
+            messageInput.focus();
+            autoResize(messageInput);
+        }
+        
         document.addEventListener('DOMContentLoaded', () => {
             checkAuth();
+            
+            // @メンション機能を初期化
+            initMentionFeature();
             
             const messageInput = document.getElementById('messageInput');
             if (messageInput) {

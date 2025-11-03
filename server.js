@@ -586,18 +586,54 @@ app.post('/api/chat', async (req, res) => {
     
     // モードに応じて処理を分岐
     if (mode === 'web') {
-      // Webモード: SERPER APIで検索
-      console.log(`🌐 Web検索モード: ${message}`);
-      const { searchContext, sources: webSources } = await searchWeb(message);
-      additionalContext = searchContext;
-      sources = webSources;
+      // Webモード: RAG情報 + Web検索のハイブリッドモード
+      console.log(`🌐 Web検索モード（ハイブリッド）: ${message}`);
       
-      systemPrompt = `あなたは親切なAIアシスタントです。以下のWeb検索結果を参照して、ユーザーの質問に答えてください。
+      // まずユーザーのドキュメントを取得（優先情報）
+      const userDocuments = await Document.find({ 
+        userId: req.session.user.userId,
+        processed: true
+      });
+      
+      let ragContext = '';
+      let ragSources = [];
+      
+      if (userDocuments.length > 0) {
+        ragContext = userDocuments
+          .map(doc => `[ファイル: ${doc.originalName}]\n${doc.extractedText}`)
+          .join('\n\n---\n\n');
+        ragSources = userDocuments.map(doc => doc.originalName);
+      }
+      
+      // Web検索も実行
+      const { searchContext, sources: webSources } = await searchWeb(message);
+      
+      // 両方を統合
+      if (ragContext) {
+        additionalContext = `【アップロードされたドキュメント（優先参照）】\n${ragContext}\n\n【Web検索結果（補足情報）】\n${searchContext}`;
+        sources = [...ragSources, ...webSources]; // RAGを先に
+        
+        systemPrompt = `あなたは親切なAIアシスタントです。以下の情報を参照してユーザーの質問に答えてください。
+
+${additionalContext}
+
+【回答ガイドライン】
+1. **優先**: アップロードされたドキュメントの情報を最優先で使用してください
+2. **補足**: ドキュメントに情報がない場合や、最新情報が必要な場合はWeb検索結果を活用してください
+3. **引用**: 情報源（ドキュメント名または検索結果）を明示してください
+4. **バランス**: 社内資料の正確性とWeb情報の新しさを両立させてください`;
+      } else {
+        // ドキュメントがない場合はWebのみ
+        additionalContext = searchContext;
+        sources = webSources;
+        
+        systemPrompt = `あなたは親切なAIアシスタントです。以下のWeb検索結果を参照して、ユーザーの質問に答えてください。
 
 【Web検索結果】
 ${additionalContext}
 
 上記の最新情報を活用しながら、ユーザーの質問に丁寧に答えてください。情報源を引用する場合は、どの検索結果から得た情報かを明示してください。`;
+      }
       
     } else {
       // RAGモード: ユーザーのドキュメントを検索
@@ -664,7 +700,10 @@ ${additionalContext}
     await conversation.save();
     
     console.log(`AI応答 (${mode}モード): ${aiResponse.substring(0, 100)}...`);
+    console.log(`参照ソース:`, sources);
     
+    // Content-Typeを明示的に設定
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.json({
       success: true,
       response: aiResponse,
@@ -677,21 +716,29 @@ ${additionalContext}
   }
 });
 
-// 接続中のユーザー数を管理
-let userCount = 0;
+// 接続中のユーザーを管理（socket.id -> ユーザー情報）
+const onlineUsers = new Map();
 
 // Socket.io接続処理
 io.on('connection', (socket) => {
   const session = socket.request.session;
   
-  userCount++;
-  console.log(`新しいユーザーが接続しました (接続数: ${userCount})`);
+  console.log(`新しいユーザーが接続しました (ソケットID: ${socket.id})`);
   
   if (session.user) {
     console.log(`認証済みユーザー: ${session.user.displayName}`);
+    // オンラインユーザーに追加
+    onlineUsers.set(socket.id, {
+      userId: session.user.userId,
+      displayName: session.user.displayName,
+      pictureUrl: session.user.pictureUrl,
+      role: session.user.role
+    });
   }
   
-  io.emit('user count', userCount);
+  // オンラインユーザー数とリストを全員に送信
+  io.emit('user count', onlineUsers.size);
+  io.emit('online users', Array.from(onlineUsers.values()));
   
   // チャットメッセージを受信
   socket.on('chat message', async (msg) => {
@@ -791,9 +838,18 @@ io.on('connection', (socket) => {
   });
   
   socket.on('disconnect', () => {
-    userCount--;
-    console.log(`ユーザーが切断しました (接続数: ${userCount})`);
-    io.emit('user count', userCount);
+    // オンラインユーザーから削除
+    const user = onlineUsers.get(socket.id);
+    if (user) {
+      console.log(`ユーザーが切断しました: ${user.displayName}`);
+      onlineUsers.delete(socket.id);
+    } else {
+      console.log(`ユーザーが切断しました (ソケットID: ${socket.id})`);
+    }
+    
+    // 更新されたユーザー数とリストを全員に送信
+    io.emit('user count', onlineUsers.size);
+    io.emit('online users', Array.from(onlineUsers.values()));
   });
 });
 
