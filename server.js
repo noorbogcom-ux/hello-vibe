@@ -553,6 +553,54 @@ app.get('/api/documents', async (req, res) => {
   }
 });
 
+// 既存ドキュメントのファイル名文字化け修正API
+app.post('/api/fix-filenames', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.status(401).json({ error: 'ログインが必要です' });
+    }
+    
+    const documents = await Document.find({ userId: req.session.user.userId });
+    let fixed = 0;
+    
+    for (const doc of documents) {
+      const originalName = doc.originalName;
+      try {
+        // Latin1からUTF-8に変換を試みる
+        const buffer = Buffer.from(originalName, 'latin1');
+        const fixedName = buffer.toString('utf8');
+        
+        // 文字化けしていそうなパターンをチェック（Latin1特有の記号）
+        // æ, ¦, è, ¦, ä, », §, æ, ¸ など
+        const hasGarbledChars = /[æ¦èä»§¸]/.test(originalName);
+        
+        // 変換後に日本語文字（ひらがな、カタカナ、漢字）が含まれるか
+        const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(fixedName);
+        
+        // 文字化けパターンがあり、変換後に日本語が含まれる場合のみ修正
+        if (originalName !== fixedName && hasGarbledChars && hasJapanese) {
+          doc.originalName = fixedName;
+          await doc.save();
+          fixed++;
+          console.log(`ファイル名修正: ${originalName} → ${fixedName}`);
+        }
+      } catch (e) {
+        console.log(`スキップ: ${originalName}`, e.message);
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `${fixed}件のファイル名を修正しました`,
+      fixed: fixed
+    });
+    
+  } catch (error) {
+    console.error('ファイル名修正エラー:', error);
+    res.status(500).json({ error: 'ファイル名の修正に失敗しました' });
+  }
+});
+
 // SERPER APIでWeb検索
 async function searchWeb(query) {
   try {
@@ -626,26 +674,52 @@ app.post('/api/chat', async (req, res) => {
         additionalContext = `【アップロードされたドキュメント（優先参照）】\n${ragContext}\n\n【Web検索結果（補足情報）】\n${searchContext}`;
         sources = [...ragSources, ...webSources]; // RAGを先に
         
-        systemPrompt = `あなたは親切なAIアシスタントです。以下の情報を参照してユーザーの質問に答えてください。
+        systemPrompt = `あなたは親切で分析力のあるAIアシスタントです。以下の情報を活用してユーザーの質問に具体的に答えてください。
 
 ${additionalContext}
 
 【回答ガイドライン】
-1. **優先**: アップロードされたドキュメントの情報を最優先で使用してください
-2. **補足**: ドキュメントに情報がない場合や、最新情報が必要な場合はWeb検索結果を活用してください
-3. **引用**: 情報源（ドキュメント名または検索結果）を明示してください
-4. **バランス**: 社内資料の正確性とWeb情報の新しさを両立させてください`;
+1. **Web検索結果の具体的活用**:
+   - 天気予報、最新ニュース、数値データなど、Web検索で得られた具体的な情報を必ず活用してください
+   - 「確認が必要」「調べてください」などの曖昧な回答は避け、検索結果から得られた具体的な情報を提示してください
+   
+2. **ドキュメント情報との統合**:
+   - アップロードされたドキュメント（仕様書、要件など）の情報を優先的に参照してください
+   - ドキュメントの要件やルールとWeb検索結果を組み合わせて、実行可能性を判断してください
+   
+3. **具体的な判断**:
+   - 天気予報なら具体的な天候（晴れ、雨、気温、風速など）を提示してください
+   - 実験や作業の可否を聞かれた場合、具体的な理由と共に「実行可能」「延期推奨」などの明確な判断を示してください
+   
+4. **情報源の明示**:
+   - ドキュメント名や検索結果のタイトルを引用してください
+   
+5. **行動指針**:
+   - 次に何をすべきか、具体的なアクションを提案してください`;
       } else {
         // ドキュメントがない場合はWebのみ
         additionalContext = searchContext;
         sources = webSources;
         
-        systemPrompt = `あなたは親切なAIアシスタントです。以下のWeb検索結果を参照して、ユーザーの質問に答えてください。
+        systemPrompt = `あなたは親切で分析力のあるAIアシスタントです。以下のWeb検索結果を最大限活用して、ユーザーの質問に具体的に答えてください。
 
 【Web検索結果】
 ${additionalContext}
 
-上記の最新情報を活用しながら、ユーザーの質問に丁寧に答えてください。情報源を引用する場合は、どの検索結果から得た情報かを明示してください。`;
+【回答ガイドライン】
+1. **具体的な情報の抽出**:
+   - 天気予報、数値データ、最新ニュースなど、検索結果から具体的な情報を必ず抽出してください
+   - 「確認してください」などの曖昧な回答ではなく、検索結果に基づいた具体的な情報を提示してください
+   
+2. **明確な判断**:
+   - ユーザーが判断を求めている場合（「～できる？」「～可能？」）、検索結果を分析して明確な判断を示してください
+   - 理由と根拠を添えて、「実行可能」「推奨しない」などの具体的な結論を出してください
+   
+3. **情報源の明示**:
+   - どの検索結果から得た情報かを明示してください
+   
+4. **実用的なアドバイス**:
+   - 次に何をすべきか、具体的なアクションプランを提案してください`;
       }
       
     } else {
