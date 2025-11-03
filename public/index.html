@@ -690,7 +690,8 @@
                         },
                         body: JSON.stringify({
                             command: command,
-                            messageCount: 30
+                            messageCount: 30,
+                            channel: currentChannel  // 現在のチャンネルを送信
                         })
                     });
                     
@@ -727,30 +728,43 @@
             messageDiv.className = 'message';
             messageDiv.dataset.messageId = msg._id;
             
-            const avatarHtml = msg.pictureUrl 
-                ? `<img src="${escapeHtml(msg.pictureUrl)}" class="message-avatar" alt="アバター">`
-                : '';
+            // BOGsメッセージの場合は特別な表示
+            const isBOGsMessage = msg.userId === 'bogs-ai';
+            
+            let avatarHtml;
+            if (isBOGsMessage) {
+                // BOGsのアバター（紫のAIアイコン）
+                avatarHtml = `<div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #8b5cf6, #a78bfa); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">🤖</div>`;
+            } else {
+                avatarHtml = msg.pictureUrl 
+                    ? `<img src="${escapeHtml(msg.pictureUrl)}" class="message-avatar" alt="アバター">`
+                    : '';
+            }
             
             // コピーボタンは全メッセージに表示
-            const copyButtonHtml = `<button onclick="copyMessage('${escapeHtml(msg.text).replace(/'/g, '\\\'')}')" title="コピー" style="background: #3b82f6; color: white; border: none; border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 0.7rem;">📋</button>`;
+            const copyButtonHtml = `<button onclick="copyMessage('${escapeHtml(msg.text).replace(/'/g, '\\\'').replace(/\n/g, '\\n')}')" title="コピー" style="background: #3b82f6; color: white; border: none; border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 0.7rem;">📋</button>`;
             
-            // 自分のメッセージの場合は削除ボタンを表示
-            const isMyMessage = currentUser && msg.userId === currentUser.userId;
+            // 自分のメッセージの場合は削除ボタンを表示（BOGsメッセージは削除不可）
+            const isMyMessage = currentUser && msg.userId === currentUser.userId && !isBOGsMessage;
             const deleteButtonHtml = isMyMessage 
                 ? `<button onclick="deleteMessage('${msg._id}')" title="削除" style="background: #ef4444; color: white; border: none; border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 0.7rem;">🗑️</button>`
                 : '';
             
+            // BOGsメッセージの場合はスタイルを変更
+            const usernameStyle = isBOGsMessage ? 'color: #8b5cf6; font-weight: 700;' : '';
+            const textStyle = isBOGsMessage ? 'border-left: 3px solid #8b5cf6;' : '';
+            
             messageDiv.innerHTML = `
                 <div class="message-header" style="display: flex; align-items: center; gap: 8px;">
                     ${avatarHtml}
-                    <span class="username">${escapeHtml(msg.username)}</span>
+                    <span class="username" style="${usernameStyle}">${escapeHtml(msg.username)}</span>
                     <span class="timestamp">${formatTime(msg.timestamp)}</span>
                     <div style="margin-left: auto; display: flex; gap: 4px;">
                         ${copyButtonHtml}
                         ${deleteButtonHtml}
                     </div>
                 </div>
-                <div class="message-text">${escapeHtml(msg.text).replace(/\n/g, '<br>')}</div>
+                <div class="message-text" style="${textStyle}">${escapeHtml(msg.text).replace(/\n/g, '<br>')}</div>
             `;
             
             messagesDiv.appendChild(messageDiv);

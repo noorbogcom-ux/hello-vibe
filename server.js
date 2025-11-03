@@ -309,6 +309,23 @@ app.post('/api/bogs-advice', async (req, res) => {
     
     console.log(`BOGsアドバイス: ${aiResponse.substring(0, 100)}...`);
     
+    // BOGsアドバイスをアドミンチャットに保存（履歴に残すため）
+    try {
+      const bogsMessage = new ChatMessage({
+        userId: 'bogs-ai',  // BOGs専用のユーザーID
+        username: 'BOGs AI',
+        pictureUrl: null,
+        text: aiResponse,
+        channel: 'admin',  // アドバイスは常にアドミンチャンネル
+        deleted: false
+      });
+      await bogsMessage.save();
+      console.log(`BOGsアドバイスを保存: adminチャンネル`);
+    } catch (saveError) {
+      console.error('BOGsアドバイス保存エラー:', saveError);
+      // 保存エラーでも応答は返す
+    }
+    
     res.json({
       success: true,
       response: aiResponse
@@ -448,6 +465,24 @@ app.post('/api/facilitator', async (req, res) => {
     const aiResponse = completion.choices[0].message.content;
     
     console.log(`AIファシリテーター応答: ${aiResponse.substring(0, 100)}...`);
+    
+    // BOGsの応答をチャットメッセージとして保存（履歴に残すため）
+    const channel = req.body.channel || 'general';
+    try {
+      const bogsMessage = new ChatMessage({
+        userId: 'bogs-ai',  // BOGs専用のユーザーID
+        username: 'BOGs AI',
+        pictureUrl: null,  // アバターなし（クライアント側でアイコン表示）
+        text: aiResponse,
+        channel: channel,
+        deleted: false
+      });
+      await bogsMessage.save();
+      console.log(`BOGsメッセージを保存: ${channel}チャンネル`);
+    } catch (saveError) {
+      console.error('BOGsメッセージ保存エラー:', saveError);
+      // 保存エラーでも応答は返す
+    }
     
     res.json({
       success: true,
