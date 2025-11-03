@@ -470,6 +470,17 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     const file = req.file;
     let extractedText = '';
     
+    // ファイル名の文字化け対策（Latin1 → UTF-8変換）
+    let originalName = file.originalname;
+    try {
+      // Multerはファイル名をLatin1としてエンコードするため、UTF-8に再変換
+      const buffer = Buffer.from(originalName, 'latin1');
+      originalName = buffer.toString('utf8');
+      console.log(`ファイル名変換: ${file.originalname} → ${originalName}`);
+    } catch (e) {
+      console.log('ファイル名変換エラー、元の名前を使用:', originalName);
+    }
+    
     // ファイルからテキストを抽出
     const fileBuffer = await fs.readFile(file.path);
     
@@ -496,7 +507,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     const document = new Document({
       userId: req.session.user.userId,
       filename: file.filename,
-      originalName: file.originalname,
+      originalName: originalName,  // 変換後のファイル名を使用
       mimeType: file.mimetype,
       fileSize: file.size,
       filePath: file.path,
@@ -506,12 +517,14 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     
     await document.save();
     
-    console.log(`ファイルアップロード成功: ${file.originalname} (${extractedText.length}文字)`);
+    console.log(`ファイルアップロード成功: ${originalName} (${extractedText.length}文字)`);
     
+    // Content-Typeを明示的に設定
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.json({
       success: true,
       documentId: document._id,
-      filename: file.originalname,
+      filename: originalName,  // 変換後のファイル名を使用
       textLength: extractedText.length
     });
     
