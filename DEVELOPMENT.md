@@ -960,6 +960,50 @@ setTimeout(() => messageDiv.remove(), 300);
 - ユーザーマニュアル作成（USER_MANUAL.md）
 - 開発ドキュメント完全版作成（このファイル）
 
+### 2025年11月3日 - Phase 7: @メンション & AI強化
+✅ **達成項目:**
+- **@メンション機能完全実装**
+  - @入力で自動ドロップダウン表示
+  - オンラインユーザー一覧表示
+  - @BOGsとコマンド選択（要約、議事録、検索）
+  - キーボードナビゲーション（↑↓、Tab、Enter、Esc）
+  - 自動フィルタリング機能
+- **時間表示の修正**
+  - ISO形式 → 「14:35」形式に統一
+  - `formatTime()` 関数実装
+- **コピー機能追加**
+  - 全メッセージに📋コピーボタン
+  - クリップボード API活用
+  - 成功通知表示（2秒間）
+- **BOGsメッセージUI統一**
+  - 通常メッセージと同じレイアウト
+  - 紫の🤖アイコン + 左ボーダーで識別
+- **ファイル名エンコーディング完全対応**
+  - アップロード時：Latin1→UTF-8自動変換
+  - 既存ファイル修正APIの追加と削除
+  - 文字化けパターン検出（æ, ¦, è等）
+- **Webモードハイブリッド化**
+  - RAG情報（社内資料）+ Web検索を統合
+  - 社内資料を優先、Web検索で補足
+  - 参照ソース表示を両方統合
+- **AIプロンプト大幅強化**
+  - 曖昧な回答の完全禁止
+  - 具体的な数値・事実の抽出を強制
+  - 明確な判断（可/不可/条件付き）の要求
+  - 回答フォーマットの指定
+  - 禁止事項の明確化
+- **BOGsメッセージ永続化**
+  - @BOGs応答をMongoDBに保存
+  - BOGsアドバイスもDB保存
+  - `userId: 'bogs-ai'` で識別
+  - 再読み込み時も表示される
+
+🐛 **解決した問題:**
+- BOGsメッセージが再読み込みで消える → DB保存で解決
+- ファイル名文字化け → Latin1→UTF-8変換で解決
+- AIが曖昧な回答をする → プロンプト強化で解決
+- Web検索結果を活用しない → 禁止事項追加で解決
+
 ---
 
 ## 🎯 次のステップアイデア
@@ -1055,18 +1099,53 @@ team: {
 socket.join(`team-${user.team}`);
 ```
 
+#### 9. メッセージ編集機能
+```javascript
+// 既存メッセージを編集（送信後5分以内）
+app.put('/api/chat-message/:messageId', async (req, res) => {
+  const message = await ChatMessage.findById(req.params.messageId);
+  if (Date.now() - message.timestamp > 5 * 60 * 1000) {
+    return res.status(403).json({ error: '編集期限を過ぎています' });
+  }
+  message.text = req.body.text;
+  message.edited = true;
+  await message.save();
+  io.emit('message edited', message);  // リアルタイム更新
+});
+```
+
+#### 10. リアクション機能（いいね、絵文字）
+```javascript
+// メッセージにリアクション追加
+reactions: [{
+  userId: String,
+  emoji: String,  // 👍, ❤️, 😄
+  timestamp: Date
+}]
+
+// Socket.io イベント
+socket.on('add reaction', async ({ messageId, emoji }) => {
+  const message = await ChatMessage.findById(messageId);
+  message.reactions.push({ userId: user.userId, emoji });
+  await message.save();
+  io.emit('reaction added', { messageId, userId, emoji });
+});
+```
+
 ### 💡 優先度: 低（将来の拡張）
 
-- [ ] ダークモード
-- [ ] 複数ファイル同時アップロード
-- [ ] ドキュメントプレビュー機能
-- [ ] 管理画面（ユーザー管理、統計）
-- [ ] メール通知（重要メッセージ）
-- [ ] 絵文字リアクション
-- [ ] メッセージ編集機能
-- [ ] スレッド機能（返信）
-- [ ] メンション機能（@username）
-- [ ] ファイル共有機能（画像、動画）
+- [ ] **ダークモード** - CSS変数でテーマ切り替え
+- [ ] **複数ファイル同時アップロード** - Multer array()
+- [ ] **ドキュメントプレビュー機能** - PDF.js統合
+- [ ] **管理画面（ユーザー管理、統計）** - ダッシュボードUI
+- [ ] **メール通知（重要メッセージ）** - Nodemailer + AWS SES
+- [ ] **既読/未読管理** - readBy配列で追跡
+- [ ] **検索機能** - MongoDB $text インデックス
+- [ ] **ファイルサイズ制限UI** - アップロード前に警告
+- [ ] **プロフィール編集** - 表示名、アバター変更
+- [ ] **通知音のカスタマイズ** - ユーザー設定に保存
+- [ ] **スレッド機能（返信）** - メッセージに返信スレッド
+- [ ] **ファイル共有機能（画像、動画）** - メディア対応
 
 ---
 
@@ -1204,6 +1283,58 @@ sudo tail -f /var/log/nginx/error.log
    printf '%s\n' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
    ```
 
+5. **ファイル名エンコーディング問題（Multer）**
+   ```javascript
+   // Multerが日本語ファイル名をLatin1で解釈する問題
+   let originalName = file.originalname;
+   try {
+     const buffer = Buffer.from(originalName, 'latin1');
+     originalName = buffer.toString('utf8');  // 正しくUTF-8に変換
+   } catch (e) {
+     console.log('変換エラー');
+   }
+   ```
+
+6. **BOGsメッセージの永続化**
+   ```javascript
+   // AIの応答を専用ユーザーIDで保存
+   const bogsMessage = new ChatMessage({
+     userId: 'bogs-ai',  // 特別なID
+     username: 'BOGs AI',
+     text: aiResponse,
+     channel: currentChannel
+   });
+   await bogsMessage.save();
+   
+   // フロントで識別
+   const isBOGsMessage = msg.userId === 'bogs-ai';
+   ```
+
+7. **AIプロンプトエンジニアリング**
+   ```javascript
+   // ❌ 弱いプロンプト
+   systemPrompt = "天気を教えてください";
+   
+   // ✅ 強化されたプロンプト
+   systemPrompt = `
+   - 曖昧な回答を禁止: 「提供できません」「わかりません」は使わない
+   - 具体的な数値を抽出: 日付、時刻、気温、降水確率
+   - 明確な判断: 「可能」「不可」「条件付き可能」
+   - フォーマット指定: 構造化された回答
+   `;
+   ```
+
+8. **@メンション機能の実装**
+   ```javascript
+   // ドロップダウン表示のキーボードナビゲーション
+   if (e.key === 'ArrowDown') {
+     selectedIndex = (selectedIndex + 1) % items.length;
+   } else if (e.key === 'Enter' || e.key === 'Tab') {
+     selectMention(items[selectedIndex]);
+     e.preventDefault();  // フォーム送信を防ぐ
+   }
+   ```
+
 ### 開発のベストプラクティス
 
 1. **段階的な開発**: まず基本機能を実装し、徐々に高度な機能を追加
@@ -1231,41 +1362,100 @@ sudo tail -f /var/log/nginx/error.log
 2. PM2でアプリを再起動
 3. Nginxを再起動
 
+### ファイル名が文字化けする場合
+1. `encoding-japanese` がインストールされているか確認
+2. Multerのファイル名変換ロジックが動作しているか確認
+   ```javascript
+   // server.js の /api/upload 内
+   const buffer = Buffer.from(originalName, 'latin1');
+   originalName = buffer.toString('utf8');
+   ```
+3. Content-Type ヘッダーに `charset=utf-8` が含まれているか確認
+
+### BOGsメッセージが再読み込みで消える場合
+1. `/api/facilitator` と `/api/bogs-advice` でDB保存が実行されているか確認
+   ```javascript
+   const bogsMessage = new ChatMessage({
+     userId: 'bogs-ai',
+     // ...
+   });
+   await bogsMessage.save();
+   ```
+2. フロントエンドで `isBOGsMessage = msg.userId === 'bogs-ai'` チェックがあるか確認
+3. MongoDB で `users` コレクションに `bogs-ai` ユーザーが存在しないことを確認（通常のユーザーではない）
+
+### AIが曖昧な回答をする場合
+1. AIプロンプトに禁止事項が含まれているか確認
+   ```javascript
+   systemPrompt = `
+   ❌ 絶対に使用禁止のフレーズ:
+   - "提供できません"
+   - "確認してください"
+   - "わかりません"
+   `;
+   ```
+2. Web検索結果が取得できているか `console.log` で確認
+3. `temperature` パラメータを調整（0.7 → 0.3 で厳密に）
+
 ---
 
 ## 🎉 まとめ
 
-このプロジェクトは、非エンジニアが **バイブコーディング** で1日で構築した、完全に機能するエンタープライズグレードのAIシステムです。
+このプロジェクトは、非エンジニアが **バイブコーディング** で構築した、完全に機能するエンタープライズグレードのAIシステムです。
 
-### 📊 最終的な成果物
+### 📊 最終的な成果物（2025年11月3日現在）
 
 ✅ **フルスタックWebアプリケーション**
-- フロントエンド（HTML/CSS/JS）
-- バックエンド（Node.js/Express）
-- データベース（MongoDB Atlas）
-- リアルタイム通信（Socket.io）
+- フロントエンド（HTML/CSS/JS）- 1,200行超
+- バックエンド（Node.js/Express）- 1,000行超
+- データベース（MongoDB Atlas）- 4コレクション
+- リアルタイム通信（Socket.io）- 双方向イベント
 
-✅ **AI統合**
-- RAG（ドキュメント分析）
-- Web検索
-- 会話記憶
-- ファシリテーター機能
+✅ **AI統合（超強化版）**
+- RAG（ドキュメント分析）- PDF/Word/Text対応
+- Web検索（SERPER API）- Google検索統合
+- ハイブリッドモード - RAG + Web統合
+- 会話記憶 - パーソナライズ対応
+- ファシリテーター機能 - @BOGsメンション
+- 戦略アドバイザー - 役員専用
+- **強化AIプロンプト** - 曖昧な回答完全禁止
+
+✅ **チャット機能（完全版）**
+- 2チャンネルシステム（オープン/アドミン）
+- @メンション機能（ドロップダウン選択）
+- オンラインユーザー表示
+- メッセージコピー
+- 論理削除（AI学習用に保持）
+- 履歴永続化
+- 効果音
+- BOGsメッセージ永続化
 
 ✅ **インフラ**
-- AWS EC2デプロイ
-- CI/CD自動化
+- AWS EC2デプロイ（Ubuntu 22.04）
+- CI/CD自動化（GitHub Actions）
 - プロセス管理（PM2）
 - リバースプロキシ（Nginx）
+- 自動再起動
 
 ✅ **認証・認可**
 - LINE OAuth 2.0
-- ロールベースアクセス制御
+- ロールベースアクセス制御（member/admin）
+- セッション管理
 
-✅ **UX**
-- モバイルファースト
+✅ **UX（プロレベル）**
+- モバイルファースト設計
 - レスポンシブデザイン
-- リアルタイム更新
-- アニメーション
+- リアルタイム更新（Socket.io）
+- ローディングアニメーション
+- 効果音（Web Audio API）
+- キーボードナビゲーション
+- コピー機能
+- 自動スクロール
+
+✅ **文字化け対策（完全版）**
+- テキストファイル：Shift-JIS/EUC-JP/UTF-8自動検出
+- ファイル名：Latin1→UTF-8自動変換
+- API応答：Content-Type明示
 
 ### 🚀 次の開発者へ
 
