@@ -265,7 +265,7 @@
             width: 32px;
             height: 32px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+            background: linear-gradient(135deg, #4a5568, #718096);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -308,7 +308,7 @@
 
         button {
             padding: 12px 28px;
-            background: var(--bg-gradient);
+            background: var(--primary-color);
             color: white;
             border: none;
             border-radius: 12px;
@@ -321,7 +321,7 @@
 
         button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
 
         button:active {
@@ -1110,7 +1110,7 @@
                             <div class="mention-name">${escapeHtml(item.text)}</div>
                             <div class="mention-command">${escapeHtml(item.description)}</div>
                         </div>
-                    </div>
+    </div>
                 `;
             }).join('');
         }
