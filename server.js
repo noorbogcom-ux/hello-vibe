@@ -278,9 +278,9 @@ app.post('/api/bogs-advice', async (req, res) => {
     
     const messages = recentMessages.reverse();
     
-    // チャット履歴をテキスト化
+    // チャット履歴をテキスト化（ユーザー名に「さん」を付ける）
     const chatHistory = messages.map(msg => 
-      `[${new Date(msg.timestamp).toLocaleTimeString('ja-JP')}] ${msg.username}: ${msg.text}`
+      `[${new Date(msg.timestamp).toLocaleTimeString('ja-JP')}] ${msg.username}さん: ${msg.text}`
     ).join('\n');
     
     // AIに戦略的アドバイスを求める
@@ -290,7 +290,7 @@ app.post('/api/bogs-advice', async (req, res) => {
 3. 次のアクション提案
 4. 注意すべき点
 
-簡潔かつ具体的に、役員が判断しやすい形でアドバイスしてください。`;
+簡潔かつ具体的に、役員が判断しやすい形でアドバイスしてください。ユーザー名には必ず「さん」を付けて、丁寧語で話してください。`;
     
     const userPrompt = `以下の役員会議の内容を分析し、戦略的アドバイスをお願いします：\n\n${chatHistory}`;
     
@@ -419,9 +419,9 @@ app.post('/api/facilitator', async (req, res) => {
       });
     }
     
-    // チャット履歴をテキスト化
+    // チャット履歴をテキスト化（ユーザー名に「さん」を付ける）
     const chatHistory = messages.map(msg => 
-      `[${new Date(msg.timestamp).toLocaleTimeString('ja-JP')}] ${msg.username}: ${msg.text}`
+      `[${new Date(msg.timestamp).toLocaleTimeString('ja-JP')}] ${msg.username}さん: ${msg.text}`
     ).join('\n');
     
     let systemPrompt = '';
@@ -429,25 +429,25 @@ app.post('/api/facilitator', async (req, res) => {
     
     // コマンドに応じてプロンプトを変更
     if (command === 'summarize' || command === '要約') {
-      systemPrompt = 'あなたは会議のファシリテーターです。チャットの会話を簡潔に要約してください。';
+      systemPrompt = 'あなたは会議のファシリテーターです。チャットの会話を簡潔に要約してください。ユーザー名には必ず「さん」を付けて、丁寧語で話してください。';
       userPrompt = `以下のチャット履歴を要約してください：\n\n${chatHistory}`;
       
     } else if (command === 'minutes' || command === '議事録') {
-      systemPrompt = 'あなたは議事録作成の専門家です。会話から決定事項とTODOを抽出してください。';
+      systemPrompt = 'あなたは議事録作成の専門家です。会話から決定事項とTODOを抽出してください。ユーザー名には必ず「さん」を付けて、丁寧語で話してください。';
       userPrompt = `以下のチャット履歴から、【決定事項】と【TODO】を抽出して整理してください：\n\n${chatHistory}`;
       
     } else if (command === 'organize' || command === '整理') {
-      systemPrompt = 'あなたは議論を整理する専門家です。会話の論点を整理し、次のアクションを提案してください。';
+      systemPrompt = 'あなたは議論を整理する専門家です。会話の論点を整理し、次のアクションを提案してください。ユーザー名には必ず「さん」を付けて、丁寧語で話してください。';
       userPrompt = `以下のチャット履歴の議論を整理し、次に何をすべきか提案してください：\n\n${chatHistory}`;
       
     } else if (command.startsWith('search:') || command.startsWith('検索:')) {
       const keyword = command.replace(/^(search:|検索:)/, '').trim();
-      systemPrompt = 'あなたは情報検索の専門家です。キーワードに関連する会話を見つけて説明してください。';
+      systemPrompt = 'あなたは情報検索の専門家です。キーワードに関連する会話を見つけて説明してください。ユーザー名には必ず「さん」を付けて、丁寧語で話してください。';
       userPrompt = `以下のチャット履歴から「${keyword}」に関連する内容を見つけて説明してください：\n\n${chatHistory}`;
       
     } else {
       // デフォルト: 質問に答える
-      systemPrompt = 'あなたはチームのAIアシスタントです。チャット履歴を参照して質問に答えてください。';
+      systemPrompt = 'あなたはチームのAIアシスタントです。チャット履歴を参照して質問に答えてください。ユーザー名には必ず「さん」を付けて、丁寧語で話してください。';
       userPrompt = `以下のチャット履歴を参照して質問に答えてください：\n\n${chatHistory}\n\n質問: ${command}`;
     }
     
