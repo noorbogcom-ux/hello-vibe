@@ -353,8 +353,11 @@ app.delete('/api/chat-message/:messageId', async (req, res) => {
       return res.status(404).json({ error: 'メッセージが見つかりません' });
     }
     
-    // 自分のメッセージのみ削除可能
-    if (message.userId !== req.session.user.userId) {
+    // 自分のメッセージ、またはBOGsのメッセージのみ削除可能
+    const isBOGsMessage = message.userId === 'bogs-ai';
+    const isMyMessage = message.userId === req.session.user.userId;
+    
+    if (!isMyMessage && !isBOGsMessage) {
       return res.status(403).json({ error: '他のユーザーのメッセージは削除できません' });
     }
     
@@ -362,7 +365,8 @@ app.delete('/api/chat-message/:messageId', async (req, res) => {
     message.deleted = true;
     await message.save();
     
-    console.log(`メッセージ論理削除: ${messageId} by ${req.session.user.displayName}`);
+    const messageType = isBOGsMessage ? 'BOGsメッセージ' : 'メッセージ';
+    console.log(`${messageType}論理削除: ${messageId} by ${req.session.user.displayName}`);
     
     res.json({ success: true, messageId });
     
